@@ -1,0 +1,2100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fetch — video prototype</title>
+<style>
+  :root{
+    --ink:#fff;
+    --dim:rgba(255,255,255,.62);
+    --faint:rgba(255,255,255,.38);
+    --held:#6fd39b;
+    --here:#ffffff;
+    --slip:#ff8f6b;
+    --stale:#f2c46a;
+    --ahead:rgba(255,255,255,.3);
+    --r-f:999px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    background:#161512;color:#fff;
+    display:flex;gap:30px;padding:28px;min-height:100vh;align-items:flex-start;
+    justify-content:center;flex-wrap:wrap;
+  }
+  body.embed{padding:10px;gap:0}
+  body.embed .notes{display:none}
+
+  .phone{
+    width:390px;height:844px;flex-shrink:0;background:#000;
+    border-radius:44px;border:11px solid #0c0c0a;position:relative;overflow:hidden;
+    box-shadow:0 26px 70px rgba(0,0,0,.55);
+  }
+  .stage{position:absolute;inset:0;overflow:hidden;background:#000;touch-action:none}
+
+  /* ---------------- deck: vertical = behaviours ---------------- */
+  .deck{position:absolute;inset:0;will-change:transform}
+  .row{position:relative;width:100%;height:100%;overflow:hidden}
+  .track{position:absolute;inset:0;display:flex;will-change:transform}
+  .cell{position:relative;width:100%;height:100%;flex:0 0 100%;overflow:hidden;background:#000;--rc:#fff}
+
+  /* ---------------- the "video" ---------------- */
+  .film{position:absolute;inset:0;overflow:hidden}
+  .scene{position:absolute;inset:-14%;animation:handheld 6s ease-in-out infinite;}
+  .bgw{position:absolute;inset:0;animation:kb 11s ease-in-out infinite alternate}
+  .rv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;display:block}
+  .dropz{position:absolute;inset:10px;z-index:26;border:2px dashed rgba(255,255,255,.65);border-radius:34px;
+    background:rgba(0,0,0,.62);display:grid;place-items:center;text-align:center;padding:44px;
+    opacity:0;pointer-events:none;transition:opacity .18s}
+  .dropz.on{opacity:1}
+  .dropz p{margin:0;font-size:16px;font-weight:700;line-height:1.5}
+  .dropz span{display:block;font-size:12.5px;color:var(--dim);margin-top:8px;font-weight:500}
+  .sky{position:absolute;inset:0}
+  .floor{position:absolute;left:-10%;right:-10%;bottom:-6%;height:46%;
+    border-radius:52% 48% 0 0/22% 22% 0 0;filter:blur(1px)}
+  .bokeh{position:absolute;border-radius:50%;filter:blur(9px);opacity:.5}
+
+  /* ---------------------------------------------------------------
+     the drawn stand-in film. illustrated, not photographic — a
+     picture-book page, so nobody mistakes it for footage of a dog.
+     every scene is the same five parts: sky, light, ground, a few
+     soft shapes, and a warm pool of light where the dog stands.
+  --------------------------------------------------------------- */
+  .rm{position:absolute;inset:0;overflow:hidden;--ac:#ffc46b}
+  .sky2{position:absolute;inset:0}
+  .sun{position:absolute;border-radius:50%;transform:translate(-50%,-50%);
+    filter:blur(3px);animation:sunpulse 7.5s ease-in-out infinite}
+  .orb{position:absolute;border-radius:50%;background:var(--ac);filter:blur(16px)}
+  .o1{left:6%;top:20%;width:32%;height:15%;opacity:.18;animation:drift1 14s ease-in-out infinite alternate}
+  .o2{right:4%;top:34%;width:24%;height:11%;opacity:.13;animation:drift2 19s ease-in-out infinite alternate}
+  .o3{left:40%;top:7%;width:17%;height:8%;opacity:.22;animation:drift1 23s ease-in-out infinite alternate-reverse}
+  .win2{position:absolute;border-radius:14px;overflow:hidden}
+  .win2 i{position:absolute;inset:0;display:block;
+    background:
+      linear-gradient(90deg,transparent calc(50% - 2px),rgba(0,0,0,.14) calc(50% - 2px),rgba(0,0,0,.14) calc(50% + 2px),transparent calc(50% + 2px)),
+      linear-gradient(180deg,transparent calc(44% - 2px),rgba(0,0,0,.14) calc(44% - 2px),rgba(0,0,0,.14) calc(44% + 2px),transparent calc(44% + 2px))}
+  .sil{position:absolute;box-shadow:inset 0 2px 0 rgba(255,255,255,.14)}
+  .sil.tre{border-radius:54% 54% 46% 46%}
+  .gnd{position:absolute;left:-8%;right:-8%;bottom:0;
+    border-radius:44% 44% 0 0/8% 8% 0 0;box-shadow:0 -20px 46px rgba(0,0,0,.34)}
+  .hz{position:absolute;left:7%;right:7%;height:2px;border-radius:2px;opacity:.55;
+    background:linear-gradient(90deg,transparent,var(--ac),transparent)}
+  /* sits under where the dog stands, not up on the horizon */
+  .pool{position:absolute;left:50%;bottom:21%;width:78%;height:17%;transform:translateX(-50%);
+    border-radius:50%;filter:blur(11px);
+    background:radial-gradient(closest-side,var(--ac),transparent 70%);
+    animation:pool 4.8s ease-in-out infinite}
+  .tex{position:absolute;left:0;right:0;bottom:0;opacity:.45;
+    background:repeating-linear-gradient(101deg,rgba(0,0,0,.15) 0 1px,transparent 1px 44px);
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000);
+    mask-image:linear-gradient(180deg,transparent,#000)}
+  @keyframes drift1{from{transform:translate(0,0)}to{transform:translate(28px,-15px)}}
+  @keyframes drift2{from{transform:translate(0,0)}to{transform:translate(-32px,13px)}}
+  @keyframes sunpulse{0%,100%{opacity:.78}50%{opacity:1}}
+  @keyframes pool{0%,100%{opacity:.34;transform:translateX(-50%) scale(1)}
+    50%{opacity:.52;transform:translateX(-50%) scale(1.07)}}
+
+  /* the rung you're on has its own colour, and it washes the top of the film,
+     so climbing the ladder is something you can see without reading anything */
+  .rglow{position:absolute;left:-12%;right:-12%;top:-18%;height:48%;z-index:2;
+    pointer-events:none;opacity:.16;filter:blur(12px);
+    background:radial-gradient(closest-side,var(--rc),transparent 72%)}
+  .subj{position:absolute;left:50%;bottom:38%;transform:translateX(-50%);
+    font-size:104px;line-height:1;filter:drop-shadow(0 18px 22px rgba(0,0,0,.5)) saturate(.95) contrast(1.05);
+    animation:bob 3.4s ease-in-out infinite}
+  .light{position:absolute;top:-30%;bottom:-30%;width:52%;left:-60%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);
+    transform:rotate(9deg);animation:sweep 9s ease-in-out infinite}
+  @keyframes sweep{0%{left:-60%}60%,100%{left:120%}}
+  .prop{position:absolute;font-size:34px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5)) saturate(.75);opacity:.95}
+  .prop.hand{left:62%;bottom:56%;font-size:44px;animation:lure 3.4s ease-in-out infinite}
+  .prop.far{left:12%;bottom:46%;font-size:34px;opacity:.72;filter:blur(1px);animation:drift 9s ease-in-out infinite alternate}
+  .prop.far2{right:10%;bottom:52%;font-size:30px;opacity:.55;filter:blur(1.4px);animation:drift 7s ease-in-out infinite alternate-reverse}
+  .grain{position:absolute;inset:0;opacity:.16;mix-blend-mode:overlay;pointer-events:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.55'/></svg>");
+    animation:flick .5s steps(2) infinite}
+  .vig{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(135% 105% at 50% 42%,transparent 58%,rgba(0,0,0,.3) 100%)}
+  .scrim{position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 52%,rgba(0,0,0,.5) 76%,rgba(0,0,0,.86) 100%)}
+
+  @keyframes handheld{
+    0%{transform:translate(0,0) rotate(0deg)}
+    22%{transform:translate(-4px,3px) rotate(.22deg)}
+    46%{transform:translate(3px,-2px) rotate(-.18deg)}
+    70%{transform:translate(-2px,-4px) rotate(.1deg)}
+    100%{transform:translate(0,0) rotate(0deg)}
+  }
+  @keyframes kb{from{transform:scale(1.01)}to{transform:scale(1.07) translate(-1.4%,-1.4%)}}
+  @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}50%{transform:translateX(-50%) translateY(-7px) scale(1.015)}}
+  @keyframes lure{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-16px) rotate(8deg)}}
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(26px)}}
+  @keyframes flick{0%{transform:translate(0,0)}100%{transform:translate(-4px,3px)}}
+
+  /* paused unless it's the one on screen */
+  .cell .scene,.cell .bgw,.cell .subj,.cell .prop,.cell .grain,.cell .bar i,.cell .light,
+  .cell .orb,.cell .sun,.cell .pool,.cell .dWrap{animation-play-state:paused}
+  .cell.playing .scene,.cell.playing .bgw,.cell.playing .subj,.cell.playing .light,
+  .cell.playing .prop,.cell.playing .grain,.cell.playing .bar i,
+  .cell.playing .orb,.cell.playing .sun,.cell.playing .pool,
+  .cell.playing .dWrap{animation-play-state:running}
+
+  .cell.ahead .film{filter:grayscale(.72) brightness(.5) contrast(.9)}
+
+  /* playhead */
+  .bar{position:absolute;left:0;right:0;top:0;height:2px;background:rgba(255,255,255,.16);z-index:4}
+  .bar i{display:block;height:100%;background:var(--rc);width:0;animation:play 7s linear infinite;
+    box-shadow:0 0 10px var(--rc)}
+  @keyframes play{from{width:0}to{width:100%}}
+  .tc{position:absolute;right:14px;top:62px;z-index:5;font-size:10px;font-weight:700;
+    letter-spacing:.1em;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums}
+  .tc b{color:#ff5f45;font-weight:800;margin-right:5px;letter-spacing:.08em}
+
+  /* ------- the demo, playing inside every cell (this IS the video) ------- */
+  .demo{position:absolute;inset:0;z-index:3;pointer-events:none}
+  .dWrap{position:absolute;left:50%;bottom:31%;transform:translateX(-50%);
+    animation:bob2 3.2s ease-in-out infinite}
+  .dDog{display:block;font-size:96px;line-height:1;
+    transition:transform .6s cubic-bezier(.3,.9,.3,1);
+    filter:drop-shadow(0 18px 20px rgba(0,0,0,.5))}
+  .dDog.stand{transform:none}
+  .dDog.tip{transform:rotate(-15deg) translateY(-7px)}
+  .dDog.sit{transform:scale(.8) translateY(20px) rotate(5deg)}
+  .dDog.down{transform:scale(.68) translateY(32px)}
+  .dDog.come{transform:scale(1.32) translateY(-8px)}
+  .dDog.away{transform:translateX(-150%) scale(.82)}
+  .dA{position:absolute;line-height:1;transition:all .55s cubic-bezier(.3,.9,.3,1);
+    filter:drop-shadow(0 8px 12px rgba(0,0,0,.45))}
+  .dHand{font-size:46px;opacity:0}
+  .dHand.on{opacity:1}
+  .dTreat{font-size:30px;opacity:0;left:52%;bottom:34%}
+  .dTreat.on{opacity:1;transform:translateY(-6px)}
+  .dPerson{font-size:56px;left:20%;bottom:27%;opacity:0}
+  .dPerson.on{opacity:1}
+  .dPerson.out{opacity:.14;transform:translateX(186px) scale(.9)}
+  .dDoor{font-size:52px;right:9%;bottom:28%;opacity:0}
+  .dDoor.on{opacity:1}
+  .dLead{position:absolute;left:19%;bottom:32%;width:94px;height:2px;
+    background:rgba(255,255,255,.45);transform-origin:left center;transform:rotate(-13deg);
+    opacity:0;transition:.5s;border-radius:2px}
+  .dLead.on{opacity:1}
+  .dLead.tight{background:var(--slip);transform:rotate(-6deg) scaleX(1.18);height:3px;
+    box-shadow:0 0 12px rgba(255,143,107,.6)}
+  .dSay{position:absolute;left:50%;top:26%;transform:translateX(-50%) scale(.8);opacity:0;
+    background:#fff;color:#111;font-size:16px;font-weight:750;padding:9px 16px;
+    border-radius:var(--r-f);transition:.28s;white-space:nowrap}
+  .dSay.on{opacity:1;transform:translateX(-50%) scale(1)}
+  .dSay:after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;
+    border:6px solid transparent;border-top-color:#fff;border-bottom:0}
+  .dMark{position:absolute;left:50%;top:37%;transform:translate(-50%,0) scale(.5);opacity:0;
+    font-size:15px;font-weight:850;letter-spacing:.14em;color:var(--held)}
+  .dMark.on{opacity:1;transform:translate(-50%,-10px) scale(1);transition:.3s}
+  .dNope{position:absolute;left:50%;top:13%;transform:translateX(-50%);opacity:0;transition:.3s;
+    background:rgba(255,143,107,.18);color:var(--slip);border:1px solid rgba(255,143,107,.5);
+    font-size:11px;font-weight:800;letter-spacing:.1em;padding:6px 12px;
+    border-radius:var(--r-f);white-space:nowrap}
+  .dNope.on{opacity:1}
+  .dRed{position:absolute;inset:0;z-index:2;opacity:0;transition:opacity .35s;pointer-events:none;
+    background:radial-gradient(120% 80% at 50% 34%,rgba(190,72,44,.34),rgba(60,14,8,.6) 78%)}
+  .cell.warn .dRed{opacity:1}
+  /* the drawn dog stands in a pool of light and casts a shadow, so he sits on
+     the floor instead of floating above it */
+  .dShad{position:absolute;left:50%;bottom:28.5%;width:33%;height:4.6%;
+    transform:translateX(-50%);filter:blur(4px);
+    background:radial-gradient(closest-side,rgba(0,0,0,.55),transparent 74%)}
+  /* real footage already shows the dog and the hand — only the words stay on top */
+  .cell.real .dWrap,.cell.real .dHand,.cell.real .dTreat,.cell.real .dShad,
+  .cell.real .dPerson,.cell.real .dDoor,.cell.real .dLead{display:none}
+
+  /* the only words on screen: what it is, and the caption on the video */
+  .top{position:absolute;left:20px;right:20px;top:54px;z-index:6}
+  .top h2{margin:0;font-size:10px;font-weight:850;letter-spacing:.16em;
+    color:rgba(255,255,255,.62);text-transform:uppercase}
+  .top p{margin:5px 0 0;font-size:21px;font-weight:750;letter-spacing:-.025em;
+    text-shadow:0 2px 16px rgba(0,0,0,.7)}
+  .dCap{position:absolute;left:20px;right:20px;bottom:146px;z-index:6;margin:0;
+    font-size:19px;line-height:1.4;font-weight:650;letter-spacing:-.012em;
+    text-shadow:0 2px 18px rgba(0,0,0,.9)}
+  .cell.warn .dCap{color:#ffd6c8}
+
+  /* ---------------- per-cell overlay ---------------- */
+  .head{position:absolute;left:20px;top:56px;z-index:6;max-width:250px}
+  .head h2{margin:0;font-size:21px;font-weight:750;letter-spacing:-.025em;
+    text-shadow:0 2px 14px rgba(0,0,0,.6)}
+  .head p{margin:4px 0 0;font-size:12.5px;color:var(--dim);line-height:1.4;
+    text-shadow:0 1px 10px rgba(0,0,0,.6)}
+  .head p.warnline{color:var(--stale)}
+  .head p.slipline{color:var(--slip)}
+
+  .foot{position:absolute;left:20px;right:76px;bottom:74px;z-index:6}
+  .crumb{font-size:9.5px;font-weight:800;letter-spacing:.13em;color:var(--faint);margin:0 0 8px}
+  .foot h3{margin:0;font-size:25px;font-weight:750;letter-spacing:-.03em;line-height:1.15;
+    text-shadow:0 2px 16px rgba(0,0,0,.65)}
+  .foot .line{margin:8px 0 0;font-size:13.5px;line-height:1.48;color:rgba(255,255,255,.8);
+    text-shadow:0 1px 12px rgba(0,0,0,.7)}
+  .prov{display:flex;align-items:center;gap:8px;margin:13px 0 0;flex-wrap:wrap}
+  .pill{font-size:10px;font-weight:800;letter-spacing:.08em;padding:5px 10px;border-radius:var(--r-f);
+    background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(6px)}
+  .pill.held{background:rgba(111,211,155,.2);color:var(--held)}
+  .pill.here{background:#fff;color:#111}
+  .pill.slip{background:rgba(255,143,107,.2);color:var(--slip)}
+  .pill.stale{background:rgba(242,196,106,.2);color:var(--stale)}
+  .pill.ahead{background:rgba(255,255,255,.1);color:var(--faint)}
+  .prov em{font-style:normal;font-size:12px;color:var(--dim)}
+
+  /* ---------------- rails and dots ---------------- */
+  .rail{position:absolute;right:14px;bottom:96px;z-index:8;display:flex;flex-direction:column;gap:12px}
+  .rail button{width:46px;height:46px;border-radius:var(--r-f);border:none;cursor:pointer;
+    background:rgba(255,255,255,.13);backdrop-filter:blur(10px);color:#fff;
+    display:grid;place-items:center;font-size:19px;font-family:inherit;
+    transition:transform .14s,background .14s}
+  .rail button:active{transform:scale(.9);background:rgba(255,255,255,.24)}
+  .rail button.key{background:#fff;color:#111}
+  .rail small{position:absolute;left:0;right:0;top:52px;text-align:center;font-size:8.5px;
+    font-weight:800;letter-spacing:.08em;color:var(--faint)}
+  .railb{position:relative}
+
+  /* the only control: record yourself doing it */
+  .rec{position:absolute;left:50%;transform:translateX(-50%);bottom:66px;z-index:8}
+  .rec button{width:62px;height:62px;border-radius:50%;border:3px solid rgba(255,255,255,.9);
+    background:rgba(0,0,0,.25);backdrop-filter:blur(10px);cursor:pointer;font-family:inherit;
+    display:grid;place-items:center;padding:0;transition:transform .14s}
+  .rec button i{width:26px;height:26px;border-radius:50%;background:#ff4a3d;
+    transition:border-radius .18s,transform .18s}
+  .rec button:active{transform:scale(.92)}
+  .rec button:active i{border-radius:7px;transform:scale(.82)}
+  .rec button:focus-visible{outline:2px solid #fff;outline-offset:4px}
+
+  /* everything he's ever been filmed doing */
+  .libbtn{position:absolute;right:22px;bottom:76px;z-index:8;border:none;cursor:pointer;
+    font-family:inherit;background:rgba(255,255,255,.13);backdrop-filter:blur(10px);color:#fff;
+    width:44px;height:44px;border-radius:var(--r-f);display:grid;place-items:center;gap:0;
+    transition:transform .14s,background .14s}
+  .libbtn:active{transform:scale(.9);background:rgba(255,255,255,.24)}
+  .libbtn:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  .libbtn b{font-size:16px;line-height:1;font-weight:500}
+  .libbtn u{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;padding:0 5px;
+    border-radius:var(--r-f);background:var(--held);color:#0b2417;text-decoration:none;
+    font-size:10.5px;font-weight:850;display:grid;place-items:center}
+
+  /* ---------------- the timeline ---------------- */
+  .tl{position:absolute;inset:0;z-index:28;background:#141310;transform:translateY(102%);
+    transition:transform .4s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+  .tl.on{transform:translateY(0)}
+  .tlbar{flex:0 0 auto;padding:50px 18px 12px;display:flex;align-items:center;gap:12px}
+  .tlbar button{background:rgba(255,255,255,.14);border:none;color:#fff;width:34px;height:34px;
+    flex:0 0 auto;border-radius:var(--r-f);font-size:16px;cursor:pointer;font-family:inherit}
+  .tlbar h4{margin:0;font-size:17px;font-weight:750;letter-spacing:-.02em;flex:1;min-width:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tlbar p{margin:2px 0 0;font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.06em}
+  .tlpick{flex:0 0 auto;display:flex;gap:7px;overflow-x:auto;padding:2px 18px 12px;
+    scrollbar-width:none}
+  .tlpick::-webkit-scrollbar{display:none}
+  .tlpick button{flex:0 0 auto;background:rgba(255,255,255,.1);border:none;color:var(--dim);
+    font-family:inherit;font-size:12px;font-weight:700;padding:8px 13px;border-radius:var(--r-f);
+    cursor:pointer;white-space:nowrap;transition:.15s}
+  .tlpick button.on{background:#fff;color:#111}
+  .tlbody{flex:1;min-height:0;overflow-y:auto;padding:0 18px 30px}
+
+  .thennow{display:flex;gap:9px;align-items:stretch;margin:0 0 20px}
+  .thennow .tn{flex:1;min-width:0;position:relative;border-radius:16px;overflow:hidden;
+    background:#000;aspect-ratio:9/13}
+  .thennow .tn video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .thennow .tn span{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:22px 10px 9px;
+    font-size:10.5px;font-weight:800;letter-spacing:.1em;
+    background:linear-gradient(180deg,transparent,rgba(0,0,0,.82))}
+  .thennow .tn em{position:absolute;left:8px;top:8px;z-index:2;font-style:normal;font-size:10px;
+    font-weight:800;letter-spacing:.06em;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);
+    padding:4px 8px;border-radius:var(--r-f)}
+  .tnlead{margin:0 0 10px;font-size:12.5px;line-height:1.5;color:var(--dim)}
+  .tnlead b{color:#fff;font-weight:750}
+
+  .tlgrp{margin:0 0 8px;font-size:9.5px;font-weight:850;letter-spacing:.14em;color:var(--faint)}
+  .tlrow{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);
+    align-items:center}
+  .tlthumb{flex:0 0 auto;width:62px;height:84px;border-radius:11px;overflow:hidden;position:relative;
+    background:#000;border:none;padding:0;cursor:pointer}
+  .tlthumb video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .tlthumb i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;
+    font-size:17px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+  .tlmeta{flex:1;min-width:0}
+  .tlmeta b{display:block;font-size:14px;font-weight:750;letter-spacing:-.01em}
+  .tlmeta span{display:block;margin-top:3px;font-size:11.5px;color:var(--dim)}
+  .tlmeta em{display:inline-block;margin-top:6px;font-style:normal;font-size:9.5px;font-weight:800;
+    letter-spacing:.1em;padding:3px 8px;border-radius:var(--r-f)}
+  .tlmeta em.up{background:rgba(111,211,155,.16);color:var(--held)}
+  .tlmeta em.same{background:rgba(255,255,255,.11);color:var(--dim)}
+  .tlmeta em.down{background:rgba(255,143,107,.16);color:var(--slip)}
+  .tlmeta em.ex{background:rgba(242,196,106,.16);color:var(--stale);margin-left:6px}
+
+  /* ---- sharing out: instagram, tiktok, anywhere else ---- */
+  .shbtn{display:flex;width:100%;align-items:center;justify-content:center;gap:9px;
+    margin:0 0 20px;padding:13px 16px;border:none;border-radius:var(--r-f);cursor:pointer;
+    font-family:inherit;font-size:13.5px;font-weight:750;letter-spacing:-.01em;
+    color:#1a1208;background:linear-gradient(96deg,#FFD98E,#FF9E6B 52%,#FF7A9C);
+    transition:transform .14s,filter .14s}
+  .shbtn:active{transform:scale(.98)}
+  .shbtn:disabled{opacity:.55;cursor:default;transform:none}
+  .shbtn:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  .shbtn i{font-style:normal;font-size:15px;line-height:1}
+  .shbtn.ghost{background:rgba(255,255,255,.12);color:#fff}
+  .shbtn.wa{background:linear-gradient(96deg,#5BD37A,#25D366)}
+  .shwhere{margin:-13px 0 20px;font-size:11px;line-height:1.5;color:var(--faint);text-align:center}
+  .tlsh{flex:0 0 auto;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;
+    font-family:inherit;font-size:13px;width:32px;height:32px;border-radius:var(--r-f);
+    display:grid;place-items:center;transition:background .14s,transform .14s}
+  .tlsh:active{transform:scale(.9)}
+  .tlsh:hover{background:rgba(255,255,255,.2)}
+
+  /* the render, while it happens — a real file is being made, so say so */
+  .render{position:absolute;inset:0;z-index:40;background:rgba(8,7,5,.9);
+    backdrop-filter:blur(14px);display:grid;place-items:center;text-align:center;padding:40px;
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .render.on{opacity:1;pointer-events:auto}
+  .render b{display:block;font-size:16px;font-weight:750;margin-bottom:8px}
+  .render span{display:block;font-size:12.5px;color:var(--dim);line-height:1.55}
+  .render .rbar{margin:18px auto 0;width:150px;height:4px;border-radius:4px;
+    background:rgba(255,255,255,.14);overflow:hidden}
+  .render .rbar i{display:block;height:100%;width:0;border-radius:4px;
+    background:linear-gradient(90deg,#FFD98E,#FF7A9C);transition:width .2s linear}
+
+  /* our own little share sheet, for when the device hasn't got one */
+  .shopt{position:absolute;inset:0;z-index:42;background:rgba(8,7,5,.72);
+    backdrop-filter:blur(10px);display:flex;align-items:flex-end;
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .shopt.on{opacity:1;pointer-events:auto}
+  .shcard{width:100%;background:#1b1a17;border-radius:26px 26px 0 0;padding:22px 20px 26px;
+    transform:translateY(14px);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+  .shopt.on .shcard{transform:translateY(0)}
+  .shcard b{display:block;font-size:18px;font-weight:750;letter-spacing:-.02em;margin-bottom:5px}
+  .shcard>div>span{display:block;font-size:12.5px;color:var(--dim);line-height:1.55;margin-bottom:16px}
+  .shcard .shbtn{margin:0 0 9px}
+  .shcard .shbtn u{display:block;text-decoration:none;font-size:10.5px;font-weight:600;
+    opacity:.72;letter-spacing:0}
+  .shcard .shbtn span{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+  .shx{display:block;width:100%;margin-top:4px;padding:11px;border:none;background:none;
+    color:var(--faint);font-family:inherit;font-size:12.5px;font-weight:650;cursor:pointer}
+  .shx:hover{color:#fff}
+  .tldel{flex:0 0 auto;background:none;border:none;color:var(--faint);font-size:15px;cursor:pointer;
+    font-family:inherit;padding:8px}
+  .tldel:hover{color:var(--slip)}
+  .tlempty{padding:36px 4px;text-align:center}
+  .tlempty p{margin:0 0 8px;font-size:14px;font-weight:700}
+  .tlempty span{font-size:12.5px;color:var(--dim);line-height:1.55;display:block}
+  .tlnote{margin:22px 0 0;font-size:11.5px;line-height:1.55;color:var(--faint)}
+
+  /* full-screen playback of one saved film */
+  .tlp{position:absolute;inset:0;z-index:34;background:#000;opacity:0;pointer-events:none;
+    transition:opacity .2s}
+  .tlp.on{opacity:1;pointer-events:auto}
+  .tlp video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+  .tlp .tlpbar{position:absolute;left:0;right:0;top:0;z-index:3;padding:50px 18px 0;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+    background:linear-gradient(180deg,rgba(0,0,0,.7),transparent)}
+  .tlp .tlpbar button{background:rgba(255,255,255,.16);border:none;color:#fff;width:34px;height:34px;
+    border-radius:var(--r-f);font-size:16px;cursor:pointer;font-family:inherit;flex:0 0 auto}
+  .tlp .tlpbar div{text-align:right;min-width:0}
+  .tlp .tlpbar b{display:block;font-size:14px;font-weight:750}
+  .tlp .tlpbar span{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+
+  /* live recording state */
+  .cap .rectime{position:absolute;left:50%;transform:translateX(-50%);bottom:166px;z-index:7;
+    display:none;align-items:center;gap:8px;font-size:13px;font-weight:800;letter-spacing:.08em;
+    background:rgba(0,0,0,.5);backdrop-filter:blur(8px);padding:7px 14px;border-radius:var(--r-f)}
+  .cap.recording .rectime{display:flex}
+  .cap .rectime i{width:8px;height:8px;border-radius:50%;background:#ff4a3d;
+    animation:blip 1s steps(2,end) infinite}
+  @keyframes blip{50%{opacity:.15}}
+  .cap.recording .aim{opacity:0;transition:opacity .3s}
+
+  /* the tick, when you swipe right */
+  .tick{position:absolute;left:50%;top:44%;z-index:9;transform:translate(-50%,-50%) scale(.4);
+    opacity:0;pointer-events:none;font-size:64px;color:var(--held);
+    text-shadow:0 6px 30px rgba(0,0,0,.6)}
+  .tick.on{animation:tickpop .7s ease-out}
+  @keyframes tickpop{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}
+    22%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}
+    62%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-58%) scale(1)}
+  }
+
+  .hdots{position:absolute;left:20px;right:20px;bottom:44px;z-index:7;display:flex;gap:5px;align-items:center}
+  .hdots i{height:3px;flex:1;border-radius:var(--r-f);background:rgba(255,255,255,.2);transition:background .2s}
+  .hdots i.done{background:var(--held)}
+  .hdots i.at{background:#fff}
+  .hdots i.slip{background:var(--slip)}
+  .hdots i.cur{height:7px;box-shadow:0 0 0 1px rgba(255,255,255,.45)}
+  .hlab{position:absolute;left:20px;bottom:22px;z-index:7;font-size:10px;font-weight:750;
+    letter-spacing:.1em;color:var(--faint)}
+
+  .vdots{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:7;
+    display:flex;flex-direction:column;gap:6px}
+  .vdots i{width:3px;height:14px;border-radius:var(--r-f);background:rgba(255,255,255,.22);transition:.2s}
+  .vdots i.at{background:#fff;height:22px}
+
+  .brand{position:absolute;left:20px;top:22px;z-index:7;font-size:11px;font-weight:850;
+    letter-spacing:.22em;color:rgba(255,255,255,.65)}
+  .dogtag{position:absolute;right:16px;top:18px;z-index:7;display:flex;align-items:center;gap:7px;
+    font-size:11.5px;font-weight:700;color:rgba(255,255,255,.7)}
+  .dogtag u{width:24px;height:24px;border-radius:var(--r-f);display:grid;place-items:center;
+    background:rgba(255,255,255,.16);text-decoration:none;font-size:13px}
+
+  /* ---------------- coach marks ---------------- */
+  .coach{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.66);backdrop-filter:blur(3px);
+    display:grid;place-items:center;text-align:center;padding:40px;transition:opacity .4s}
+  .coach.gone{opacity:0;pointer-events:none}
+  .coach h4{margin:0 0 6px;font-size:20px;font-weight:750;letter-spacing:-.02em}
+  .coach>div>p{margin:0 0 26px;font-size:13px;color:var(--dim);line-height:1.5}
+  .gest{display:flex;flex-direction:column;gap:14px;margin-bottom:26px}
+  .gest div{display:flex;align-items:center;gap:12px;text-align:left;font-size:13px;color:rgba(255,255,255,.85)}
+  .gest b{width:34px;height:34px;border-radius:var(--r-f);background:rgba(255,255,255,.14);
+    display:grid;place-items:center;font-size:15px;flex-shrink:0}
+  .gest span{color:var(--faint);display:block;font-size:11.5px;margin-top:2px}
+  .coach button{border:none;background:#fff;color:#111;font-family:inherit;font-size:14px;
+    font-weight:750;padding:13px 30px;border-radius:var(--r-f);cursor:pointer}
+  .arrows i{position:absolute;font-size:22px;opacity:.5;animation:nudge 1.8s ease-in-out infinite}
+  .arrows i.u{left:50%;top:14%;transform:translateX(-50%)}
+  .arrows i.d{left:50%;bottom:11%;transform:translateX(-50%);animation-delay:.3s}
+  .arrows i.l{left:6%;top:50%;animation-delay:.6s}
+  .arrows i.r{right:6%;top:50%;animation-delay:.9s}
+  @keyframes nudge{0%,100%{opacity:.28}50%{opacity:.75}}
+
+  /* ---------------- sheet ---------------- */
+  .veil{position:absolute;inset:0;z-index:24;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;
+    transition:opacity .3s}
+  .veil.on{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:25;background:#1b1a17;
+    border-radius:26px 26px 0 0;padding:10px 20px 30px;transform:translateY(102%);
+    transition:transform .38s cubic-bezier(.2,.8,.2,1);max-height:88%;overflow-y:auto}
+  .sheet.on{transform:translateY(0)}
+  .grip{width:38px;height:4px;border-radius:var(--r-f);background:rgba(255,255,255,.22);margin:0 auto 16px}
+  .sheet h4{margin:0 0 4px;font-size:19px;font-weight:750;letter-spacing:-.02em}
+  .sheet .sub{margin:0 0 16px;font-size:12.5px;color:var(--dim);line-height:1.5}
+  .lad{list-style:none;margin:0;padding:0}
+  .lad li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .lad li:last-child{border-bottom:none}
+  .lad u{width:24px;height:24px;border-radius:var(--r-f);flex-shrink:0;display:grid;place-items:center;
+    font-size:11px;font-weight:800;background:rgba(255,255,255,.1);color:var(--faint);
+    text-decoration:none;margin-top:2px}
+  .lad li.done u{background:rgba(111,211,155,.22);color:var(--held)}
+  .lad li.at u{background:#fff;color:#111}
+  .lad b{display:block;font-size:14px;font-weight:700}
+  .lad span{display:block;font-size:12.5px;color:var(--dim);line-height:1.45;margin-top:3px}
+  .opts{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+  .opt{display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;
+    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;
+    border-radius:14px;padding:14px 15px}
+  .opt:active{background:rgba(255,255,255,.14)}
+  .opt b{display:block;font-size:14.5px;font-weight:700}
+  .opt span{display:block;font-size:12.5px;color:var(--dim);margin-top:4px;line-height:1.45}
+  .opt.good{border-color:rgba(111,211,155,.4)}
+  .opt.bad{border-color:rgba(255,143,107,.35)}
+  .shrow{display:flex;gap:14px;margin:14px 0 4px;justify-content:space-between}
+  .shrow button{flex:1;border:none;background:none;font-family:inherit;color:var(--dim);cursor:pointer;
+    font-size:10.5px;font-weight:650;display:flex;flex-direction:column;align-items:center;gap:7px}
+  .shrow em{font-style:normal;width:50px;height:50px;border-radius:15px;background:rgba(255,255,255,.12);
+    display:grid;place-items:center;font-size:22px}
+  .splitprev{display:flex;gap:2px;border-radius:14px;overflow:hidden;height:150px;margin-bottom:6px}
+  .splitprev .half{flex:1;position:relative}
+  .splitprev .tagl{position:absolute;left:8px;bottom:8px;z-index:3;font-size:9.5px;font-weight:800;
+    letter-spacing:.09em;color:#fff;text-shadow:0 1px 6px #000}
+
+  /* ---------------- how-to layer ---------------- */
+  .howpill{display:inline-flex;align-items:center;gap:7px;margin:13px 0 0;border:none;cursor:pointer;
+    font-family:inherit;font-size:12.5px;font-weight:700;color:#111;background:rgba(255,255,255,.93);
+    padding:9px 15px 9px 12px;border-radius:var(--r-f);backdrop-filter:blur(8px)}
+  .howpill:active{transform:scale(.96)}
+  .howpill em{font-style:normal;font-size:11px}
+  .howpill.ghost{background:rgba(255,255,255,.16);color:#fff}
+
+  .how{position:absolute;inset:0;z-index:28;background:#100f0c;opacity:0;pointer-events:none;
+    transition:opacity .3s}
+  .how.on{opacity:1;pointer-events:auto}
+  .hfilm{position:absolute;inset:0;overflow:hidden;background:#131210}
+  .hroom{position:absolute;inset:0}
+  .hwarn{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s;
+    background:radial-gradient(120% 80% at 50% 34%,rgba(190,72,44,.34),rgba(60,14,8,.6) 78%)}
+  .how.warn .hwarn{opacity:1}
+  .hstage{position:absolute;inset:0}
+  .bobwrap{position:absolute;left:50%;bottom:31%;transform:translateX(-50%);
+    animation:bob2 3.2s ease-in-out infinite}
+  @keyframes bob2{0%,100%{margin-bottom:0}50%{margin-bottom:9px}}
+  #hDog{display:block;font-size:96px;line-height:1;transition:transform .6s cubic-bezier(.3,.9,.3,1);
+    filter:drop-shadow(0 18px 20px rgba(0,0,0,.5))}
+  #hDog.stand{transform:none}
+  #hDog.tip{transform:rotate(-15deg) translateY(-7px)}
+  #hDog.sit{transform:scale(.8) translateY(20px) rotate(5deg)}
+  #hDog.down{transform:scale(.68) translateY(32px)}
+  #hDog.come{transform:scale(1.32) translateY(-8px)}
+  #hDog.away{transform:translateX(-150%) scale(.82)}
+  .act{position:absolute;line-height:1;transition:all .55s cubic-bezier(.3,.9,.3,1);
+    filter:drop-shadow(0 8px 12px rgba(0,0,0,.45))}
+  #hHand{font-size:46px;opacity:0}
+  #hHand.on{opacity:1}
+  #hTreat{font-size:30px;opacity:0;left:52%;bottom:34%}
+  #hTreat.on{opacity:1;transform:translateY(-6px)}
+  #hPerson{font-size:56px;left:20%;bottom:27%;opacity:0}
+  #hPerson.on{opacity:1}
+  #hPerson.out{opacity:.14;transform:translateX(186px) scale(.9)}
+  #hDoor{font-size:52px;right:9%;bottom:28%;opacity:0}
+  #hDoor.on{opacity:1}
+  #hLead{position:absolute;left:19%;bottom:32%;width:94px;height:2px;background:rgba(255,255,255,.45);
+    transform-origin:left center;transform:rotate(-13deg);opacity:0;transition:.5s;border-radius:2px}
+  #hLead.on{opacity:1}
+  #hLead.tight{background:var(--slip);transform:rotate(-6deg) scaleX(1.18);height:3px;
+    box-shadow:0 0 12px rgba(255,143,107,.6)}
+  .say{position:absolute;left:50%;top:27%;transform:translateX(-50%) scale(.8);opacity:0;
+    background:#fff;color:#111;font-size:16px;font-weight:750;padding:9px 16px;border-radius:var(--r-f);
+    transition:.28s;white-space:nowrap}
+  .say.on{opacity:1;transform:translateX(-50%) scale(1)}
+  .say:after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;
+    border:6px solid transparent;border-top-color:#fff;border-bottom:0}
+  .mark{position:absolute;left:50%;top:38%;transform:translate(-50%,0) scale(.5);opacity:0;
+    font-size:15px;font-weight:850;letter-spacing:.14em;color:var(--held)}
+  .mark.on{opacity:1;transform:translate(-50%,-10px) scale(1);transition:.3s}
+  .nope{position:absolute;left:50%;top:12%;transform:translateX(-50%);opacity:0;transition:.3s;
+    background:rgba(255,143,107,.18);color:var(--slip);border:1px solid rgba(255,143,107,.5);
+    font-size:11px;font-weight:800;letter-spacing:.1em;padding:6px 12px;border-radius:var(--r-f);white-space:nowrap}
+  .nope.on{opacity:1}
+
+  .htop{position:absolute;left:0;right:0;top:0;z-index:6;padding:50px 18px 0;
+    display:flex;align-items:center;gap:12px}
+  .htop button{width:34px;height:34px;border-radius:var(--r-f);border:none;background:rgba(255,255,255,.14);
+    color:#fff;font-size:15px;cursor:pointer;font-family:inherit;flex-shrink:0}
+  .htop p{margin:0;font-size:10px;font-weight:850;letter-spacing:.13em;color:rgba(255,255,255,.62);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hcap{position:absolute;left:0;right:0;bottom:0;z-index:6;padding:0 22px 40px;
+    background:linear-gradient(180deg,transparent,rgba(0,0,0,.72) 42%)}
+  .hcap p{margin:0 0 16px;font-size:18px;line-height:1.42;font-weight:600;letter-spacing:-.01em;
+    text-shadow:0 2px 14px rgba(0,0,0,.7);min-height:78px}
+  .how.warn .hcap p{color:#ffd6c8}
+  .hbeats{display:flex;gap:5px}
+  .hbeats i{height:3px;flex:1;border-radius:var(--r-f);background:rgba(255,255,255,.2)}
+  .hbeats i.on{background:#fff}
+  .hbeats i.warn{background:var(--slip)}
+  .hnav{position:absolute;inset:0;z-index:5;display:flex}
+  .hnav button{flex:1;background:none;border:none;cursor:pointer;font-family:inherit}
+  .hfoot{position:absolute;left:0;right:0;bottom:152px;z-index:7;font-size:10px;text-align:center;
+    color:var(--faint);font-weight:750;letter-spacing:.1em;opacity:0;transition:opacity .5s}
+  .hfoot.on{opacity:1}
+
+  /* ---------------- capture ---------------- */
+  .cap{position:absolute;inset:0;z-index:30;background:#000;transform:translateY(102%);
+    transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+  .cap.on{transform:translateY(0)}
+  .cap .vf{position:absolute;inset:0;overflow:hidden}
+  .cap .capbar{position:absolute;left:0;right:0;top:0;z-index:6;padding:52px 20px 0;
+    display:flex;align-items:center;justify-content:space-between}
+  .cap .capbar button{background:rgba(255,255,255,.14);border:none;color:#fff;width:34px;height:34px;
+    border-radius:var(--r-f);font-size:16px;cursor:pointer;font-family:inherit}
+  .cap .capbar p{margin:0;font-size:11px;font-weight:800;letter-spacing:.11em;color:rgba(255,255,255,.7)}
+  .cap .aim{position:absolute;left:0;right:0;bottom:190px;z-index:6;text-align:center;padding:0 40px}
+  .cap .aim p{margin:0;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.85);
+    text-shadow:0 1px 12px rgba(0,0,0,.8)}
+  .shutter{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:7;
+    width:74px;height:74px;border-radius:var(--r-f);border:4px solid rgba(255,255,255,.85);
+    background:none;cursor:pointer;display:grid;place-items:center;padding:0}
+  .shutter i{width:56px;height:56px;border-radius:var(--r-f);background:#ff4b34;transition:.25s}
+  .shutter.rec i{width:26px;height:26px;border-radius:7px}
+  .cap .ring{position:absolute;left:50%;bottom:74px;transform:translateX(-50%) rotate(-90deg);
+    width:74px;height:74px;z-index:6;pointer-events:none}
+  .cap .ring circle{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:220;stroke-dashoffset:220}
+  .cap.recording .ring circle{animation:ring 4s linear forwards}
+  @keyframes ring{to{stroke-dashoffset:0}}
+  .count{position:absolute;inset:0;z-index:8;display:grid;place-items:center;font-size:88px;
+    font-weight:800;pointer-events:none;opacity:0}
+  .count.on{animation:cd 1s ease-out}
+  @keyframes cd{0%{opacity:0;transform:scale(1.5)}30%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.9)}}
+
+  .toast{position:absolute;left:50%;bottom:120px;transform:translate(-50%,14px);z-index:40;
+    background:rgba(255,255,255,.95);color:#111;padding:12px 18px;border-radius:var(--r-f);
+    font-size:13px;font-weight:650;opacity:0;transition:.3s;pointer-events:none;max-width:80%;text-align:center}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------------- notes ---------------- */
+  .notes{width:300px;color:#cfcac0;font-size:12.5px;line-height:1.65}
+  .notes h3{color:#fff;font-size:14px;margin:0 0 8px;letter-spacing:-.01em}
+  .notes p{margin:0 0 12px}
+  .notes b{color:#fff}
+  .notes hr{border:none;border-top:1px solid rgba(255,255,255,.12);margin:16px 0}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition-duration:.01ms!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="stage" id="stage">
+    <div class="deck" id="deck"></div>
+
+    <div class="brand">FETCH</div>
+    <div class="dogtag"><u>🐕</u>Charlie · 14 mo</div>
+
+    <div class="vdots" id="vdots"></div>
+    <div class="hdots" id="hdots"></div>
+
+    <div class="rec">
+      <button id="bFilm" class="key" aria-label="Record yourself doing this"><i></i></button>
+    </div>
+    <button class="libbtn" id="bLib" aria-label="Everything you have filmed">
+      <b>🎞</b><u id="libN" hidden>0</u>
+    </button>
+    <div style="display:none">
+      <button id="bLad"></button><button id="bShare"></button>
+    </div>
+
+    <div class="coach" id="coach">
+      <div>
+        <h4>Just watch. Then do it.</h4>
+        <p>Three swipes. Nothing to read.</p>
+        <div class="gest">
+          <div><b>→</b><div>Got it<span>Ticked. Next one plays</span></div></div>
+          <div><b>←</b><div>Didn't get it<span>Back a stage</span></div></div>
+          <div><b>↓</b><div>Something new<span>A different thing to teach him</span></div></div>
+        </div>
+        <button id="coachGo">Start</button>
+      </div>
+      <div class="arrows"><i class="u">↑</i><i class="d">↓</i><i class="l">←</i><i class="r">→</i></div>
+    </div>
+
+    <div class="how" id="how">
+      <div class="hfilm">
+        <div class="hroom" id="hRoom"></div>
+        <div class="hwarn"></div>
+        <div class="hstage">
+          <span class="act" id="hPerson">🧍</span>
+          <span class="act" id="hDoor">🚪</span>
+          <span class="bobwrap"><span id="hDog" class="stand">🐕</span></span>
+          <span id="hLead"></span>
+          <span class="act" id="hHand">🤏</span>
+          <span class="act" id="hTreat">🦴</span>
+          <span class="say" id="hSay"></span>
+          <span class="mark" id="hMark">Good ✓</span>
+          <span class="nope" id="hNope">✕ NOT THIS</span>
+        </div>
+        <div class="grain"></div><div class="vig"></div>
+      </div>
+      <div class="bar"><i id="hBar" style="width:0;animation:none;transition:width .5s linear"></i></div>
+      <div class="hnav"><button id="hPrev" aria-label="Previous step"></button><button id="hNext" aria-label="Next step"></button></div>
+      <div class="htop"><button id="hX">✕</button><p id="hTag"></p></div>
+      <div class="hfoot" id="hFoot"></div>
+      <div class="hcap"><p id="hCap"></p><div class="hbeats" id="hBeats"></div></div>
+    </div>
+
+    <div class="veil" id="veil"></div>
+    <div class="sheet" id="sheet"><div class="grip"></div><div id="sheetBody"></div></div>
+
+    <div class="cap" id="cap">
+      <div class="vf" id="capVf"></div>
+      <div class="capbar"><button id="capX">✕</button><p id="capTag">FILMING</p><span style="width:34px"></span></div>
+      <div class="aim"><p id="capAim"></p></div>
+      <svg class="ring" viewBox="0 0 74 74"><circle cx="37" cy="37" r="35"/></svg>
+      <div class="rectime" id="capTime"><i></i><span>0:00</span></div>
+      <button class="shutter" id="capBtn"><i></i></button>
+      <div class="count" id="capCount"></div>
+    </div>
+
+    <div class="tl" id="tl">
+      <div class="tlbar">
+        <button id="tlX" aria-label="Close">✕</button>
+        <div style="flex:1;min-width:0"><h4 id="tlName">Everything filmed</h4><p id="tlSub"></p></div>
+      </div>
+      <div class="tlpick" id="tlPick"></div>
+      <div class="tlbody" id="tlBody"></div>
+    </div>
+
+    <div class="tlp" id="tlp">
+      <video id="tlpV" playsinline controls></video>
+      <div class="tlpbar">
+        <button id="tlpX" aria-label="Close">✕</button>
+        <div><b id="tlpT"></b><span id="tlpS"></span></div>
+      </div>
+    </div>
+
+    <div class="render" id="render"><div>
+      <b id="renderT">Making the film</b>
+      <span id="renderS">Both clips, stacked, in one file.</span>
+      <div class="rbar"><i id="renderB"></i></div>
+    </div></div>
+
+    <div class="shopt" id="shOpt"><div class="shcard">
+      <div><b id="shOptT">Send it</b><span id="shOptS"></span></div>
+      <button class="shbtn wa" id="shWa"><i>◆</i><span>Send on WhatsApp
+        <u>Saves the film, then opens WhatsApp to attach it</u></span></button>
+      <button class="shbtn ghost" id="shSave"><i>⬇</i><span>Just save the film
+        <u>Then post it wherever you like</u></span></button>
+      <button class="shx" id="shOptX">Not now</button>
+    </div></div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+  <div class="dropz" id="dropz"><div><p>Drop a video here</p>
+    <span>It becomes this step's clip — real footage, straight away.</span></div></div>
+</div>
+
+<div class="notes">
+  <h3>What this is</h3>
+  <p>Fetch as a feed. It opens, it plays, and it keeps playing. There is no menu, no card, no dashboard and nothing to read except the line on the video itself.</p>
+  <hr>
+  <h3>The video is the instruction</h3>
+  <p>The clip that autoplays is not an archive of your dog. It is a demo of <i>what you do</i> at this exact step — the hand, the word, the timing — beat by beat. So "how to train this" stopped being a thing you tap into and became the video.</p>
+  <p>Every script ends on the common mistake, in red: saying the word at the same time as the hand, keeping food in your fist, pushing a frightened dog to the next number. That's the bit other apps leave out.</p>
+  <hr>
+  <h3>Three swipes</h3>
+  <p><b>Right</b> = got it. The step ticks, and the next one starts playing on its own.<br>
+     <b>Left</b> = didn't get it. Back a step, and that step stops being ticked.<br>
+     <b>Down</b> = something new. A different behaviour.</p>
+  <p>The one button is record: film yourself, or him, doing the thing you just watched.</p>
+  <hr>
+  <h3>Filming, and what happens to the film</h3>
+  <p>Press record, count down from three, and it films until you press it again — up to a minute. You decide how long a rep takes: a sit is four seconds, a settle is forty.</p>
+  <p>Every film is <b>kept on the device</b>, in IndexedDB, with the date and the exact step it was filmed at. It survives a refresh. Nothing is uploaded, and there is no account.</p>
+  <hr>
+  <h3>The timeline</h3>
+  <p>The 🎞 button opens every film you've taken, per behaviour, newest first. Each one carries the step he was on and whether that was <b>up</b>, <b>the same</b>, or <b>back down</b> from the film before it.</p>
+  <p>At the top, once there are two or more: <b>then and now</b>, side by side. Same dog, same behaviour, months apart. That comparison is the whole product — it's the thing memory can't do for you.</p>
+  <p>Going backwards is shown, not hidden: <i>"He has come back down 1 step. That happens to every dog."</i> Deleting a film takes two taps and says out loud that it isn't backed up anywhere.</p>
+  <hr>
+  <h3>About the picture quality</h3>
+  <p>There is no real footage in here, and there never was. Every scene is <i>drawn</i> — a flat illustration of the room, with the dog, the hand and the treat animated on top of it. It stands in for the clip a real user would have filmed.</p>
+  <p>Three ways to put actual video in:</p>
+  <p><b>1. Drag a video file</b> onto the phone. It becomes the step you're looking at, straight away.<br>
+     <b>2. Put files in a <code>clips/</code> folder</b> next to this file, named <code>sit-4.mp4</code>, <code>recall-1.mp4</code> and so on — behaviour, then rung number. They load on open.<br>
+     <b>3. Press the record button</b> and film. Only works over localhost, not from a file:// path — browsers won't hand over a camera otherwise.</p>
+  <hr>
+  <h3>Why video is the mechanism</h3>
+  <p>The whole problem was that progress is real but unfeelable — memory habituates. A row of clips left-to-right defeats that without a single chart. Rung 1 next to rung 4 <i>is</i> the evidence.</p>
+  <p style="color:#8a857c">Parked, not deleted: the ladder sheet, the then-and-now share, and the full-screen how-to player. They're still in the file and can come back if the feed turns out to be too thin.</p>
+  <hr>
+  <h3>Still true</h3>
+  <p>No streaks. Nothing is ever "mastered" — rung 6 is keeping it. Slips are shown, named and explained rather than hidden. Sharing is the OS share sheet, nobody else's feed.</p>
+  <p style="color:#8a857c">Arrow keys work too. Backup of the old card version: rung-prototype-cards-v1.html</p>
+</div>
+
+<script>
+/* ============================ scenes ============================ */
+const SCENE = {
+  kitchen:{sky:'linear-gradient(180deg,#9c8a68,#4b4133)',floor:'#6d5f48',b1:'#c4ac7f',b2:'#8a785a',prop:'🖐️'},
+  hall:   {sky:'linear-gradient(180deg,#7d7566,#3a352d)',floor:'#5a5246',b1:'#a29581',b2:'#6f6759',prop:'🪞'},
+  lounge: {sky:'linear-gradient(180deg,#947d68,#40342a)',floor:'#6b5748',b1:'#c09b78',b2:'#846a55',prop:'🛋️'},
+  garden: {sky:'linear-gradient(180deg,#9db06c,#3f4a2b)',floor:'#5f7440',b1:'#c3d489',b2:'#7d9152',prop:'🌳'},
+  park:   {sky:'linear-gradient(180deg,#a8bd76,#42522c)',floor:'#637c3f',b1:'#cfe094',b2:'#87a058',prop:'🌳'},
+  cafe:   {sky:'linear-gradient(180deg,#a08663,#463829)',floor:'#6f5b42',b1:'#c9a97c',b2:'#8b7050',prop:'☕'},
+  street: {sky:'linear-gradient(180deg,#8b8f9c,#33363d)',floor:'#5c5f68',b1:'#adb2be',b2:'#6f747f',prop:'🚗'},
+  door:   {sky:'linear-gradient(180deg,#8f7c62,#3b3128)',floor:'#63523f',b1:'#b79b76',b2:'#7d6a52',prop:'🚪'}
+};
+
+/* ---------------------------------------------------------------
+   the eight places training actually happens, drawn rather than
+   filmed. each one is a time of day as much as a room — the kitchen
+   is a bright morning, the street is dusk — so the six rungs read as
+   a journey out of the house and into the world.
+   sky: three stops, top to bottom.  gnd: two.  ac: the light colour.
+   sun: [left%, top%, width%].  sil: shapes standing on the ground.
+--------------------------------------------------------------- */
+const SET = {
+  kitchen:{fh:44,ac:'#FFC873',
+    sky:['#FFE3B4','#F0A05A','#8E3F2B'], gnd:['#8A4227','#331611'], sun:[64,15,54],
+    win:{l:'7%',t:'11%',w:'31%',h:'29%',c:'#FFF3D2'},
+    sil:[{l:'-8%',w:'36%',h:'21%',c:'#5A2A20',r:'22px 22px 0 0'},
+         {l:'70%',w:'38%',h:'16%',c:'#6B3226',r:'20px 20px 0 0'},
+         {l:'44%',w:'11%',h:'9%',c:'#4E241C',r:'6px 6px 0 0'}]},
+  hall:   {fh:43,ac:'#BFD9F5',
+    sky:['#EEF4FB','#A9BED4','#3F5165'], gnd:['#5F6B7A','#232931'], sun:[24,13,46],
+    win:{l:'58%',t:'8%',w:'26%',h:'46%',c:'#F4FAFF'},
+    sil:[{l:'2%',w:'16%',h:'24%',c:'#4A5462',r:'12px 12px 0 0'},
+         {l:'84%',w:'20%',h:'14%',c:'#414B58',r:'14px 14px 0 0'}]},
+  lounge: {fh:45,ac:'#FF9E86',
+    sky:['#FFD2BE','#E0748A','#4E2447'], gnd:['#6E3450','#241021'], sun:[30,20,60],
+    win:{l:'62%',t:'13%',w:'28%',h:'25%',c:'#FFE0C4'},
+    sil:[{l:'-6%',w:'48%',h:'19%',c:'#4C2138',r:'26px 26px 0 0'},
+         {l:'80%',w:'26%',h:'12%',c:'#57273F',r:'16px 16px 0 0'}]},
+  door:   {fh:42,ac:'#8FE4D4',
+    sky:['#E6F7F3','#8FD0C4','#255C57'], gnd:['#356B63','#122926'], sun:[50,18,44],
+    win:{l:'34%',t:'5%',w:'30%',h:'52%',c:'#F2FFFB'},
+    sil:[{l:'0%',w:'20%',h:'18%',c:'#1F4B46',r:'14px 14px 0 0'},
+         {l:'82%',w:'22%',h:'23%',c:'#1B4340',r:'14px 14px 0 0'}]},
+  cafe:   {fh:42,ac:'#F5C878',
+    sky:['#FBE7BC','#C58A4A','#5E3320'], gnd:['#7A4826','#2C170D'], sun:[18,14,50],
+    win:{l:'6%',t:'9%',w:'40%',h:'33%',c:'#FFF0CE'},
+    sil:[{l:'54%',w:'22%',h:'17%',c:'#57301B',r:'50% 50% 4px 4px'},
+         {l:'82%',w:'21%',h:'15%',c:'#4C2A17',r:'50% 50% 4px 4px'},
+         {l:'40%',w:'8%',h:'10%',c:'#4A2915',r:'5px 5px 0 0'}]},
+  garden: {fh:48,ac:'#C6F07C',
+    sky:['#D6F0FF','#95D2EE','#3F7C96'], gnd:['#5C9B48','#193E20'], sun:[74,12,46],
+    sil:[{l:'-6%',w:'30%',h:'26%',c:'#27512A',tree:1},
+         {l:'26%',w:'20%',h:'16%',c:'#2E5C31',tree:1},
+         {l:'70%',w:'34%',h:'30%',c:'#1F4623',tree:1},
+         {l:'52%',w:'12%',h:'9%',c:'#356A35',tree:1}]},
+  park:   {fh:50,ac:'#D6F58A',
+    sky:['#E4F5FF','#A2D9F5','#4E8FB8'], gnd:['#6BA84E','#1E4522'], sun:[40,10,58],
+    sil:[{l:'-8%',w:'28%',h:'23%',c:'#27512A',tree:1},
+         {l:'18%',w:'20%',h:'16%',c:'#2E5C31',tree:1},
+         {l:'40%',w:'23%',h:'20%',c:'#245029',tree:1},
+         {l:'64%',w:'18%',h:'14%',c:'#316334',tree:1},
+         {l:'80%',w:'30%',h:'26%',c:'#1E4522',tree:1}]},
+  street: {fh:46,ac:'#C4A8FF',
+    sky:['#FFC2CE','#8C7BB8','#221F3E'], gnd:['#3A3856','#121026'], sun:[16,22,52],
+    sil:[{l:'-4%',w:'26%',h:'40%',c:'#2B2947',r:'6px 6px 0 0'},
+         {l:'24%',w:'19%',h:'54%',c:'#33305234',r:'6px 6px 0 0'},
+         {l:'45%',w:'23%',h:'33%',c:'#2E2C4B',r:'6px 6px 0 0'},
+         {l:'70%',w:'36%',h:'47%',c:'#37345A',r:'8px 8px 0 0'}]}
+};
+SET.street.sil[1].c='#333052';
+
+/* the ladder has a temperature: cool at the bottom, warm at the top.
+   you can see which rung you're on without reading a word */
+const RC = ['#7FB3FF','#7FD8C4','#B9E27A','#F2D06B','#FF9E6B','#FF7A9C'];
+const rungColour = i => RC[i % RC.length];
+
+/* ============================ the six rungs ============================ */
+const RUNGS = [
+  {t:'Getting it',        l:'Lure it or catch it happening. Reward every single time. No word yet — he doesn\'t know what he\'s doing.'},
+  {t:'Losing the food',   l:'Same hand movement, nothing in it. He does the work now; the treat comes after.'},
+  {t:'Adding the word',   l:'Say it first, then help. Never both at once — the word has to predict the hand, not share it.'},
+  {t:'Fluent at home',    l:'About eight times out of ten, first ask, no help. That\'s the bar before anything gets harder.'},
+  {t:'Out in the world',  l:'One thing harder at a time — further away, longer, or busier. Never two at once.'},
+  {t:'Keeping it',        l:'Rewarded now and then, for life. Not finished — kept. Stopping altogether is how it fades.'}
+];
+
+/* ============================ behaviours ============================ */
+const B = [
+  {
+    id:'sit', name:'Sit', kind:'cued', at:4,
+    dog:'🐕', clips:['2 Feb','9 Feb','18 Feb','14 Mar',null,null],
+    scenes:['kitchen','kitchen','kitchen','lounge','park','cafe'],
+    props:['🖐️','✋','','','🌳','☕'],
+    notes:['He followed the treat. Twelve in a row.','No food in the hand and he still went down.','First time the word did it on its own.','Eight from ten this morning, cold.',null,null]
+  },
+  {
+    id:'door', name:'Wait at the door', kind:'cued', at:2,
+    dog:'🐕', clips:['21 Feb','2 Mar','19 Mar',null,null,null],
+    scenes:['door','door','door','door','street','street'],
+    props:['🖐️','','🚪','🚪','🚗','🚗'],
+    notes:['Two seconds, hand on the latch.','Hand off the latch, he held it.','Word first, then the door moves. Four seconds.',null,null,null]
+  },
+  {
+    id:'recall', name:'Come back', kind:'cued', at:3, peak:4,
+    dog:'🐕', clips:['26 Jan','4 Feb','20 Feb','8 Mar','3 Apr'],
+    scenes:['lounge','hall','garden','garden','park','park'],
+    props:['🖐️','','','🦴','🐦','🐦'],
+    notes:['Ran to the treat from two metres.','Two metres, no food showing.','Word first, across the garden.','Eight from ten in the garden.','This is the one that fell apart.',null]
+  },
+  {
+    id:'drop', name:'Drop it', kind:'cued', at:2, stale:'12 Mar',
+    dog:'🐕', clips:['18 Feb','27 Feb','12 Mar',null,null,null],
+    scenes:['lounge','lounge','lounge','kitchen','garden','park'],
+    props:['🦴','🦴','🦴','🧦','🌳','🌳'],
+    notes:['Swapped the toy for chicken, every time.','No chicken in sight, he still let go.','Said it, then swapped. Three from five.',null,null,null]
+  },
+  {
+    id:'alone', name:'Being left alone', kind:'thr', at:3, peak:4,
+    unit:'minutes', dog:'🐕',
+    steps:[
+      {v:'40 seconds',clip:'11 Jan',note:'Out the door, back before he stood up.'},
+      {v:'3 minutes', clip:'24 Jan',note:'Lay down at 30 seconds and stayed there.'},
+      {v:'8 minutes', clip:'9 Feb', note:'One whine at the start, then sleep.'},
+      {v:'12 minutes',clip:'2 Apr', note:'Settled by 40 seconds. Slept through most of it.'},
+      {v:'18 minutes',clip:'14 Mar',note:'He held this in March. It has gone backwards since.'},
+      {v:'25 minutes',clip:null,    note:null}
+    ],
+    scenes:['hall','hall','lounge','lounge','lounge','hall'],
+    props:['🚪','🚪','','','','🚪']
+  },
+  {
+    id:'lead', name:'Loose lead', kind:'thr', at:2,
+    unit:'distance', dog:'🐕',
+    steps:[
+      {v:'5 metres',   clip:'3 Feb', note:'The length of the drive, no tension.'},
+      {v:'15 metres',  clip:'22 Feb',note:'To the postbox and back.'},
+      {v:'40 metres',  clip:'11 Mar',note:'Most of the quiet street. Tightened once at the corner.'},
+      {v:'120 metres', clip:null,    note:null},
+      {v:'The whole walk',clip:null, note:null}
+    ],
+    scenes:['garden','street','street','street','park'],
+    props:['','🚗','🚗','🚗','🐦']
+  }
+];
+
+/* ============================ how-to scripts ============================ */
+const HOWB={
+  sit:   {cue:'Sit',        lure:'Lift it slowly up and back over his head. His nose follows it up, so his bum goes down.', win:'his bum touches the floor', pose:'sit',   prompt:'do the hand lift',        hardest:'the bench outside the shop'},
+  door:  {cue:'Wait',       lure:'Flat hand, palm towards him, while your other hand touches the handle.',                  win:'he holds still for two seconds', pose:'stand', prompt:'show the flat hand',      hardest:'the front door with someone outside'},
+  recall:{cue:'Charlie, come', lure:'Crouch, open your arms and run backwards two steps. He chases you.',                     win:'he gets all the way to you',     pose:'come',  prompt:'crouch and run backwards',hardest:'the park, on a long line, one dog in view'},
+  drop:  {cue:'Drop',       lure:'Hold something better than the toy right at his nose.',                                   win:'the toy leaves his mouth',        pose:'stand', prompt:'offer the swap',          hardest:'something he picked up in the street'}
+};
+const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
+
+function cuedScript(b,r){
+  const h=HOWB[b.id]; if(!h) return [];
+  const S=[
+    [ {c:'Treat between finger and thumb, right at his nose. Say nothing at all.',dog:'stand',hand:[46,37]},
+      {c:h.lure,dog:'tip',hand:[42,53]},
+      {c:`The second ${h.win} — mark it. "Good."`,dog:h.pose,mark:true,hand:[42,53]},
+      {c:'Treat straight away. At this rung every single one gets paid.',dog:h.pose,treat:true},
+      {c:`Don't say "${h.cue}" yet. He doesn't know what it means — and a word he ignores is a word he learns to ignore.`,dog:h.pose,warn:true} ],
+    [ {c:'Same movement. Empty hand. The treats live in your pocket now.',dog:'stand',hand:[46,37]},
+      {c:'He follows the hand because the hand has been worth following.',dog:'tip',hand:[42,53]},
+      {c:`${cap1(h.win)} — mark it.`,dog:h.pose,mark:true},
+      {c:'Now the treat appears. Paid afterwards, never shown beforehand.',dog:h.pose,treat:true},
+      {c:'If food stays in your hand past a week, the food becomes the cue and you become scenery.',dog:h.pose,warn:true} ],
+    [ {c:`Say it once. "${h.cue}." Then nothing.`,dog:'stand',say:h.cue},
+      {c:'Count one second. He does nothing. That silence is the entire lesson.',dog:'stand'},
+      {c:`Now ${h.prompt} — the help he already knows.`,dog:'tip',hand:[42,53]},
+      {c:'He does it, you mark it, he gets paid.',dog:h.pose,mark:true,treat:true},
+      {c:'Never the word and the hand at the same time. Together, the word predicts nothing — and he will only ever answer your hand.',dog:'tip',say:h.cue,hand:[42,53],warn:true} ],
+    [ {c:'Ten asks. Count them out loud if it helps.',dog:'stand',say:h.cue},
+      {c:'Word only. No hand, no lean, no eyebrows.',dog:'stand',say:h.cue},
+      {c:'Eight out of ten, first ask. That is the bar — not a feeling that he basically knows it.',dog:h.pose,mark:true},
+      {c:'Then move yourself about. Sitting down, back turned, other room. Same word.',dog:h.pose},
+      {c:'Five out of ten is not nearly there. It is a rung three dog. Going back costs days; pushing on costs months.',dog:'stand',warn:true} ],
+    [ {c:'Pick one thing to make harder. Further away, longer, or busier. One.',dog:'stand',say:h.cue},
+      {c:`Today: ${h.hardest}. Nothing else changes.`,dog:'stand'},
+      {c:'Drop your standard the moment the world gets louder. Easier reps, better pay.',dog:h.pose,mark:true,treat:true},
+      {c:'Two good ones and stop. Leave while he is still winning.',dog:h.pose},
+      {c:'Park, off lead and children at once is not rung five. It is rung one in a hurricane — he will fail, and you will think he is being stubborn.',dog:'stand',warn:true} ],
+    [ {c:'He knows it. From here it only has to survive.',dog:h.pose},
+      {c:'Pay it sometimes. Not every time, and not on a pattern he can work out.',dog:h.pose,treat:true},
+      {c:'Every so often, pay stupidly well. That is what keeps it strong.',dog:h.pose,mark:true,treat:true},
+      {c:'Ask for it in ordinary life. Before the lead goes on. Before the bowl goes down.',dog:'stand',say:h.cue},
+      {c:'Stopping the rewards completely is not mastery, it is extinction — and it fades slowly enough that you will blame him instead of the plan.',dog:'stand',warn:true} ]
+  ];
+  return S[r]||[];
+}
+
+function thrScript(b){
+  if(b.id==='alone') return [
+    {c:'Camera down where he settles. This is a measurement, not a test.',dog:'down',door:true,person:'on'},
+    {c:'Leave for a length he is already easy with. Shorter than last time is completely fine.',dog:'down',door:true,person:'out'},
+    {c:'Come back before anything happens. Boring is the whole goal.',dog:'down',door:true,person:'on'},
+    {c:'Watch the film back. Find the first moment he changed — ears, pacing, one whine.',dog:'down'},
+    {c:'Next session stops just before that moment. Never past it.',dog:'down',mark:true},
+    {c:'Never let him cry it out. Going past distress is flooding: it makes him worse, and it is the one thing this app will not put on a schedule for you.',dog:'stand',warn:true},
+    {c:'If forty seconds is too much for him, that is a vet behaviourist, not an app. We would rather say so than sell you a plan.',dog:'stand',warn:true}
+  ];
+  return [
+    {c:'Lead loose. Treat hand down by your trouser seam.',dog:'stand',lead:'on',hand:[28,34]},
+    {c:'While the lead stays slack, feed at your leg. Every few steps, no ceremony.',dog:'stand',lead:'on',treat:true},
+    {c:'The second it goes tight — stop. Stand still. Say nothing at all.',dog:'stand',lead:'tight'},
+    {c:'When it goes slack again, walk on. That is the entire rule.',dog:'stand',lead:'on',mark:true},
+    {c:'Your number is how far you get before the first stop. Measure it, do not guess it.',dog:'stand',lead:'on'},
+    {c:'No lead pops, no corrections. That teaches him other dogs predict pain — which builds the reactive dog you were trying to avoid.',dog:'stand',lead:'tight',warn:true}
+  ];
+}
+
+/* ============================ build ============================ */
+const stage=document.getElementById('stage'), deck=document.getElementById('deck');
+let W=0,H=0,R=0;
+const C=B.map(b=>Math.min(b.at,(b.kind==='thr'?b.steps.length:6)-1));
+
+/* real clips, when there are any: dropped in, recorded, or found in clips/ */
+const VID={};
+const vkey=(b,i)=>b.id+':'+i;
+
+function filmHTML(sceneKey,dog,prop,src){
+  if(src) return `<div class="film"><video class="rv" src="${src}" muted loop playsinline preload="auto"></video>
+    <div class="grain" style="opacity:.07"></div><div class="vig"></div><div class="scrim"></div></div>`;
+  return `<div class="film">${sceneWrap(sceneKey,dog,prop)}</div>`;
+}
+
+/* the drawn room, reused by the deck and by the how-to player.
+   built back to front like a stage set: sky, light, shapes, ground, light pool */
+function roomHTML(sceneKey,fhOv){
+  const k=SET[sceneKey]||SET.kitchen;
+  const fh=fhOv||k.fh;
+
+  const sky=`<span class="sky2" style="background:linear-gradient(180deg,${k.sky[0]} 0%,${k.sky[1]} 44%,${k.sky[2]} 100%)"></span>`;
+
+  /* the phone is roughly twice as tall as it is wide, so a circle of light
+     needs its height scaled or it comes out as an egg */
+  const sun = k.sun
+    ? `<span class="sun" style="left:${k.sun[0]}%;top:${k.sun[1]}%;width:${k.sun[2]}%;
+        height:${(k.sun[2]*0.46).toFixed(1)}%;
+        background:radial-gradient(closest-side,${k.ac},transparent 70%)"></span>`
+    : '';
+
+  const win = k.win
+    ? `<span class="win2" style="left:${k.win.l};top:${k.win.t};width:${k.win.w};height:${k.win.h};
+        background:linear-gradient(165deg,${k.win.c},${k.ac});
+        box-shadow:0 0 90px ${k.ac}59,0 14px 34px rgba(0,0,0,.28)"><i></i></span>`
+    : '';
+
+  const sils=(k.sil||[]).map(o=>
+    `<span class="sil${o.tree?' tre':''}" style="left:${o.l};width:${o.w};height:${o.h};
+      bottom:${fh-2}%;background:${o.c};${o.tree?'':`border-radius:${o.r||'16px 16px 0 0'}`}"></span>`
+  ).join('');
+
+  return `<div class="rm" style="--ac:${k.ac}">
+    ${sky}${sun}
+    <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
+    ${win}${sils}
+    <span class="gnd" style="height:${fh}%;background:linear-gradient(180deg,${k.gnd[0]},${k.gnd[1]})"></span>
+    <span class="tex" style="height:${fh}%"></span>
+    <span class="hz" style="bottom:${fh - 1}%"></span>
+    <span class="pool"></span>
+  </div>`;
+}
+
+function sceneWrap(sceneKey,dog,prop){
+  /* the room only. the dog and everything he does lives in the demo layer,
+     so the film and the instruction are the same picture */
+  return `<div class="scene"><div class="bgw">${roomHTML(sceneKey)}</div>
+    <span class="light"></span>
+    </div><div class="grain" style="opacity:.1"></div><div class="vig"></div><div class="scrim"></div>`;
+}
+
+function cellHTML(b,i){
+  const thr=b.kind==='thr';
+  const scene=b.scenes[i]||'kitchen', prop=(b.props&&b.props[i])||'';
+  const title = thr ? b.steps[i].v : RUNGS[i].t;
+  const src = VID[vkey(b,i)];
+  return `<div class="cell${src?' real':''}" data-c="${i}" style="--rc:${rungColour(i)}">
+    ${filmHTML(scene,b.dog,prop,src)}
+    <div class="rglow"></div>
+    <div class="dRed"></div>
+    <div class="demo">
+      <span class="dA dPerson">🧍</span>
+      <span class="dA dDoor">🚪</span>
+      <span class="dShad"></span>
+      <span class="dWrap"><span class="dDog stand">${b.dog}</span></span>
+      <span class="dLead"></span>
+      <span class="dA dHand">🤏</span>
+      <span class="dA dTreat">🦴</span>
+      <span class="dSay"></span>
+      <span class="dMark">Good ✓</span>
+      <span class="dNope">✕ NOT THIS</span>
+    </div>
+    <div class="bar"><i></i></div>
+    <div class="top"><h2>${b.name}</h2><p>${title}</p></div>
+    <p class="dCap"></p>
+    <div class="tick">✓</div>
+  </div>`;
+}
+
+/* ---- the demo runs inside the cell. this IS the video ---- */
+function demoScript(b,i){ return b.kind==='thr' ? thrScript(b) : cuedScript(b,i); }
+
+function stopDemo(cell){ if(cell&&cell._dt){ clearTimeout(cell._dt); cell._dt=null; } }
+
+function startDemo(cell,b,i){
+  stopDemo(cell);
+  const sc=demoScript(b,i); if(!sc||!sc.length) return;
+  cell._sc=sc; cell._i=0;
+  playBeat(cell);
+}
+
+function playBeat(cell){
+  const sc=cell._sc, s=sc[cell._i]; if(!s) return;
+  const q=sel=>cell.querySelector(sel);
+  q('.dCap').textContent=s.c;
+  cell.classList.toggle('warn',!!s.warn);
+  q('.dDog').className='dDog '+(s.dog||'stand');
+  const hand=q('.dHand');
+  hand.classList.toggle('on',!!s.hand);
+  if(s.hand){ hand.style.left=s.hand[0]+'%'; hand.style.bottom=s.hand[1]+'%'; }
+  q('.dTreat').classList.toggle('on',!!s.treat);
+  const say=q('.dSay');
+  say.textContent = s.say?`“${s.say}”`:''; say.classList.toggle('on',!!s.say);
+  q('.dPerson').className='dA dPerson'+(s.person?' on':'')+(s.person==='out'?' out':'');
+  q('.dDoor').className='dA dDoor'+(s.door?' on':'');
+  q('.dLead').className='dLead'+(s.lead?' on':'')+(s.lead==='tight'?' tight':'');
+  q('.dNope').classList.toggle('on',!!s.warn);
+  const mk=q('.dMark'); mk.classList.remove('on');
+  if(s.mark) setTimeout(()=>mk.classList.add('on'),380);
+  const dur = s.warn?5200:3900;
+  const bar=q('.bar i');
+  if(bar){ bar.style.transition='none'; bar.style.width=(cell._i/sc.length*100)+'%';
+    void bar.offsetWidth;
+    bar.style.transition=`width ${dur}ms linear`;
+    bar.style.width=((cell._i+1)/sc.length*100)+'%'; }
+  cell._dt=setTimeout(()=>{ cell._i=(cell._i+1)%sc.length; playBeat(cell); }, dur);
+}
+
+function rowHTML(b,ri){
+  const n = b.kind==='thr'?b.steps.length:6;
+  let cells=''; for(let i=0;i<n;i++) cells+=cellHTML(b,i);
+  return `<div class="row" data-r="${ri}"><div class="track">${cells}</div></div>`;
+}
+
+function buildAll(){
+  deck.innerHTML = B.map((b,i)=>rowHTML(b,i)).join('');
+  document.getElementById('vdots').innerHTML = B.map(()=>'<i></i>').join('');
+}
+function rebuildRow(ri){
+  const row=deck.children[ri];
+  row.querySelector('.track').innerHTML =
+    (B[ri].kind==='thr'?B[ri].steps:[0,0,0,0,0,0]).map((_,i)=>cellHTML(B[ri],i)).join('');
+  place(false); setActive();
+}
+
+/* ============================ movement ============================ */
+function measure(){const r=stage.getBoundingClientRect();W=r.width;H=r.height;}
+function place(anim,dx,dy){
+  dx=dx||0; dy=dy||0;
+  deck.style.transition = anim?'transform .42s cubic-bezier(.2,.82,.2,1)':'none';
+  deck.style.transform = `translate3d(0,${-R*H+dy}px,0)`;
+  [...deck.children].forEach((row,i)=>{
+    const t=row.querySelector('.track');
+    t.style.transition = anim?'transform .42s cubic-bezier(.2,.82,.2,1)':'none';
+    t.style.transform = `translate3d(${-C[i]*W+(i===R?dx:0)}px,0,0)`;
+  });
+}
+function curCell(){return deck.children[R].querySelector('.track').children[C[R]];}
+
+/* ticked steps. seeded from where he already is */
+const DONE = B.map(b=>{
+  const n=b.kind==='thr'?b.steps.length:6;
+  return Array.from({length:n},(_,i)=>i<b.at);
+});
+
+function setActive(){
+  document.querySelectorAll('.cell.playing').forEach(c=>{c.classList.remove('playing'); stopDemo(c);});
+  const b=B[R], n=b.kind==='thr'?b.steps.length:6;
+  const c=curCell();
+  if(c){ c.classList.add('playing'); restartFilm(c); startDemo(c,b,C[R]); }
+  const hd=document.getElementById('hdots');
+  hd.innerHTML=Array.from({length:n},(_,i)=>
+    `<i class="${DONE[R][i]?'done':''}${i===C[R]?' cur':''}"></i>`).join('');
+  [...document.getElementById('vdots').children].forEach((d,i)=>d.classList.toggle('at',i===R));
+}
+function restartFilm(cell){
+  cell.querySelectorAll('.bar i,.scene,.bgw,.subj,.prop,.grain').forEach(el=>{
+    const a=el.style.animation; el.style.animation='none'; void el.offsetWidth; el.style.animation=a||'';
+  });
+  /* only the clip on screen plays */
+  document.querySelectorAll('.cell video.rv').forEach(v=>{ try{v.pause()}catch(e){} });
+  const rv=cell.querySelector('video.rv');
+  if(rv){
+    try{rv.currentTime=0}catch(e){}
+    const tryPlay=()=>{ const p=rv.play(); if(p&&p.catch) p.catch(()=>{}); };
+    tryPlay();
+    /* a big file may not be decodable yet — play again the moment it is, so it
+       never sits on a frozen frame looking like a video that failed to load */
+    if(rv.readyState<3) rv.addEventListener('canplay',tryPlay,{once:true});
+  }
+  tcT=0;
+}
+let tcT=0;
+
+function go(dr,dc){
+  if(dr){
+    const nr=Math.min(B.length-1,Math.max(0,R+dr));
+    if(nr!==R){R=nr; place(true); setTimeout(setActive,120); haptic();}
+    else place(true);
+  } else {
+    const b=B[R], n=b.kind==='thr'?b.steps.length:6;
+    const from=C[R];
+    const nc=Math.min(n-1,Math.max(0,from+dc));
+    if(nc===from){
+      /* nowhere left to go, but right still means "got it" */
+      if(dc>0 && !DONE[R][from]){ DONE[R][from]=true; flashTick(curCell()); setActive(); }
+      place(true); return;
+    }
+    /* right = got it. left = didn't get it, so it stops being ticked */
+    if(dc>0){ DONE[R][from]=true; flashTick(curCell()); }
+    else { DONE[R][nc]=false; }
+    C[R]=nc; place(true); setTimeout(setActive,120); haptic();
+  }
+}
+function flashTick(cell){
+  const t=cell&&cell.querySelector('.tick'); if(!t) return;
+  t.classList.remove('on'); void t.offsetWidth; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),700);
+}
+function haptic(){ if(navigator.vibrate) try{navigator.vibrate(6)}catch(e){} }
+
+/* ---- gestures ---- */
+let sx=0,sy=0,ax=null,down=false,t0=0,onBtn=false;
+stage.addEventListener('pointerdown',e=>{
+  if(uiOpen())return;
+  onBtn=!!(e.target.closest&&e.target.closest('button'));
+  /* never capture a press that started on a control — capture retargets the
+     pointerup to the stage and the button's click never fires */
+  if(onBtn){ down=false; return; }
+  down=true;ax=null;sx=e.clientX;sy=e.clientY;t0=Date.now();
+  try{stage.setPointerCapture(e.pointerId)}catch(err){}
+});
+stage.addEventListener('pointermove',e=>{
+  if(!down)return;
+  const dx=e.clientX-sx, dy=e.clientY-sy;
+  if(!ax){ if(Math.abs(dx)>8||Math.abs(dy)>8) ax=Math.abs(dx)>Math.abs(dy)?'x':'y'; else return; }
+  hideCoach();
+  if(ax==='x'){
+    const b=B[R], n=b.kind==='thr'?b.steps.length:6;
+    let d=dx;
+    if((C[R]===0&&d>0)||(C[R]===n-1&&d<0)) d*=.3;
+    place(false,d,0);
+  } else {
+    let d=dy;
+    if((R===0&&d>0)||(R===B.length-1&&d<0)) d*=.3;
+    place(false,0,d);
+  }
+});
+function end(e){
+  if(!down)return; down=false;
+  const dx=e.clientX-sx, dy=e.clientY-sy, dt=Date.now()-t0;
+  const fast=dt<260;
+  if(ax==='x'){
+    const th=fast?36:W*.24;
+    if(dx<-th) go(0,1); else if(dx>th) go(0,-1); else place(true);
+  } else if(ax==='y'){
+    const th=fast?40:H*.16;
+    if(dy<-th) go(1,0); else if(dy>th) go(-1,0); else place(true);
+  } else {
+    place(true);
+  }
+  ax=null;
+}
+stage.addEventListener('pointerup',end);
+stage.addEventListener('pointercancel',end);
+
+let wl=0;
+stage.addEventListener('wheel',e=>{
+  if(uiOpen())return; e.preventDefault();
+  const now=Date.now(); if(now-wl<520)return;
+  if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){ if(Math.abs(e.deltaY)<26)return; wl=now; hideCoach(); go(e.deltaY>0?1:-1,0); }
+  else { if(Math.abs(e.deltaX)<26)return; wl=now; hideCoach(); go(0,e.deltaX>0?1:-1); }
+},{passive:false});
+
+addEventListener('keydown',e=>{
+  if(how.classList.contains('on')){
+    if(e.key==='Escape') closeHow();
+    else if(e.key==='ArrowRight'){e.preventDefault();stepHow(1)}
+    else if(e.key==='ArrowLeft'){e.preventDefault();stepHow(-1)}
+    return;
+  }
+  if(uiOpen()){ if(e.key==='Escape'){
+    if(tlp.classList.contains('on')) closeTLP();
+    else if(tl.classList.contains('on')) closeTL();
+    else { closeSheet(); closeCap(); }
+  } return; }
+  const k=e.key;
+  if(k==='ArrowDown'){e.preventDefault();hideCoach();go(1,0)}
+  else if(k==='ArrowUp'){e.preventDefault();hideCoach();go(-1,0)}
+  else if(k==='ArrowRight'){e.preventDefault();hideCoach();go(0,1)}
+  else if(k==='ArrowLeft'){e.preventDefault();hideCoach();go(0,-1)}
+});
+
+/* ============================ coach ============================ */
+const coach=document.getElementById('coach');
+function hideCoach(){ if(!coach.classList.contains('gone')) coach.classList.add('gone'); }
+document.getElementById('coachGo').onclick=hideCoach;
+
+/* ============================ how-to player ============================ */
+const how=document.getElementById('how'),
+      hDog=document.getElementById('hDog'), hHand=document.getElementById('hHand'),
+      hTreat=document.getElementById('hTreat'), hSay=document.getElementById('hSay'),
+      hMark=document.getElementById('hMark'), hNope=document.getElementById('hNope'),
+      hPerson=document.getElementById('hPerson'), hDoor=document.getElementById('hDoor'),
+      hLead=document.getElementById('hLead'), hCap=document.getElementById('hCap'),
+      hBar=document.getElementById('hBar'), hBeats=document.getElementById('hBeats');
+let hScript=[], hI=0, hTimer=null;
+
+function openHow(){
+  const b=B[R], i=C[R];
+  hScript = b.kind==='thr' ? thrScript(b) : cuedScript(b,i);
+  if(!hScript.length) return;
+  /* same drawn room as the step you tapped, so the demo is visibly in that place */
+  document.getElementById('hRoom').innerHTML = roomHTML(b.scenes[i]||'kitchen',34);
+  document.getElementById('hTag').textContent = b.kind==='thr'
+    ? `HOW TO · ${b.name.toUpperCase()} · ${b.steps[i].v.toUpperCase()}`
+    : `HOW TO · ${b.name.toUpperCase()} · RUNG ${i+1} OF 6`;
+  const foot=document.getElementById('hFoot');
+  foot.textContent='TAP RIGHT TO STEP ON · LEFT TO GO BACK';
+  foot.classList.add('on'); clearTimeout(foot._t);
+  foot._t=setTimeout(()=>foot.classList.remove('on'),3200);
+  hBeats.innerHTML = hScript.map(s=>`<i class="${s.warn?'warn':''}"></i>`).join('');
+  hI=0; how.classList.add('on'); renderBeat();
+}
+function closeHow(){ clearTimeout(hTimer); how.classList.remove('on','warn'); }
+
+function renderBeat(){
+  const s=hScript[hI]; if(!s) return;
+  hCap.textContent=s.c;
+  how.classList.toggle('warn',!!s.warn);
+  hDog.className = s.dog||'stand';
+  hHand.classList.toggle('on',!!s.hand);
+  if(s.hand){ hHand.style.left=s.hand[0]+'%'; hHand.style.bottom=s.hand[1]+'%'; }
+  hTreat.classList.toggle('on',!!s.treat);
+  hSay.textContent = s.say?`“${s.say}”`:'';
+  hSay.classList.toggle('on',!!s.say);
+  hPerson.className='act'+(s.person?' on':'')+(s.person==='out'?' out':'');
+  hDoor.className='act'+(s.door?' on':'');
+  hLead.className=(s.lead?'on':'')+(s.lead==='tight'?' tight':'');
+  hNope.classList.toggle('on',!!s.warn);
+  hMark.classList.remove('on');
+  if(s.mark) setTimeout(()=>hMark.classList.add('on'),380);
+  [...hBeats.children].forEach((el,i)=>el.classList.toggle('on',i<=hI));
+  hBar.style.width=((hI+1)/hScript.length*100)+'%';
+  clearTimeout(hTimer);
+  hTimer=setTimeout(()=>{ hI=(hI+1)%hScript.length; renderBeat(); }, s.warn?5200:3900);
+}
+function stepHow(d){ hI=(hI+d+hScript.length)%hScript.length; renderBeat(); }
+document.getElementById('hNext').onclick=e=>{e.stopPropagation();stepHow(1)};
+document.getElementById('hPrev').onclick=e=>{e.stopPropagation();stepHow(-1)};
+document.getElementById('hX').onclick=e=>{e.stopPropagation();closeHow()};
+
+/* ============================ sheet ============================ */
+const veil=document.getElementById('veil'), sheet=document.getElementById('sheet'),
+      sheetBody=document.getElementById('sheetBody'), cap=document.getElementById('cap');
+function uiOpen(){return sheet.classList.contains('on')||cap.classList.contains('on')
+  ||how.classList.contains('on')||!coach.classList.contains('gone')
+  ||tl.classList.contains('on')||tlp.classList.contains('on')
+  ||document.getElementById('shOpt').classList.contains('on');}
+function openSheet(html){ sheetBody.innerHTML=html; veil.classList.add('on'); sheet.classList.add('on'); }
+function closeSheet(){ veil.classList.remove('on'); sheet.classList.remove('on'); }
+veil.onclick=closeSheet;
+
+function toast(t){
+  const el=document.getElementById('toast'); el.textContent=t; el.classList.add('on');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2400);
+}
+
+/* ---- the ladder sheet ---- */
+document.getElementById('bLad').onclick=()=>{
+  const b=B[R];
+  if(b.kind==='thr'){
+    openSheet(`<h4>${b.name}</h4>
+      <p class="sub">This one isn't a ladder — it's a number, and it can go down. You move it when he's calm, never on a schedule.</p>
+      <ul class="lad">${b.steps.map((s,i)=>`<li class="${i<b.at?'done':i===b.at?'at':''}">
+        <u>${i+1}</u><div><b>${s.v}</b><span>${s.clip?'Filmed '+s.clip+'. '+(s.note||''):'Not yet.'}</span></div></li>`).join('')}</ul>
+      <p class="sub" style="margin-top:16px">If it stalls or goes backwards for weeks, that's a vet behaviourist, not an app. We'll say so rather than sell you a plan.</p>`);
+  } else {
+    openSheet(`<h4>${b.name} — the whole climb</h4>
+      <p class="sub">Six rungs. Rung six isn't a trophy — it's the maintenance one, and it lasts for life.</p>
+      <ul class="lad">${RUNGS.map((r,i)=>`<li class="${i<b.at?'done':i===b.at?'at':''}">
+        <u>${i+1}</u><div><b>${r.t}</b><span>${r.l}</span></div></li>`).join('')}</ul>`);
+  }
+};
+
+/* ---- share sheet ---- */
+document.getElementById('bShare').onclick=()=>{
+  const b=B[R], thr=b.kind==='thr';
+  const first = thr?b.steps[0]:0, firstLab = thr?b.steps[0].v:'Rung 1 · '+RUNGS[0].t,
+        nowLab = thr?b.steps[b.at].v:'Rung '+(b.at+1)+' · '+RUNGS[b.at].t;
+  const s1=SCENE[b.scenes[0]], s2=SCENE[b.scenes[b.at]]||SCENE.lounge;
+  openSheet(`<h4>Then and now</h4>
+    <p class="sub">Two clips, side by side, ${thr?'his first measurement and where he is today':'rung one and where he is today'}. It goes wherever you send it — there's no feed here.</p>
+    <div class="splitprev">
+      <div class="half">${filmHTML(b.scenes[0],b.dog,b.props?b.props[0]:'')}<span class="tagl">${thr?b.steps[0].clip:b.clips[0]} · ${firstLab}</span></div>
+      <div class="half">${filmHTML(b.scenes[b.at]||'lounge',b.dog,b.props?b.props[b.at]:'')}<span class="tagl">TODAY · ${nowLab}</span></div>
+    </div>
+    <p class="sub">“${b.name} — ${firstLab} to ${nowLab}. ${thr?'Twelve weeks.':'Four months.'}”</p>
+    <div class="shrow">
+      <button onclick="shared('Messages')"><em>💬</em>Messages</button>
+      <button onclick="shared('WhatsApp')"><em>🟢</em>WhatsApp</button>
+      <button onclick="shared('the vet')"><em>🩺</em>His vet</button>
+      <button onclick="shared('your camera roll')"><em>⬇️</em>Save</button>
+    </div>`);
+};
+window.shared=(where)=>{ closeSheet(); setTimeout(()=>toast('Ready to send to '+where+' — nothing left the phone yet.'),260); };
+
+/* ============================ the film store ============================
+   Video blobs are megabytes, so localStorage is out — it only holds strings
+   and caps at about 5MB. IndexedDB holds Blobs and survives a refresh.       */
+const DBN='fetch-films', DBS='films';
+let dbP=null;
+function db(){
+  if(dbP) return dbP;
+  dbP=new Promise((res,rej)=>{
+    if(!window.indexedDB) return rej(new Error('no indexeddb'));
+    const r=indexedDB.open(DBN,1);
+    r.onupgradeneeded=()=>{
+      const d=r.result;
+      if(!d.objectStoreNames.contains(DBS)){
+        const s=d.createObjectStore(DBS,{keyPath:'id',autoIncrement:true});
+        s.createIndex('ts','ts'); s.createIndex('bid','bid');
+      }
+    };
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+  return dbP;
+}
+function tx(mode,fn){
+  return db().then(d=>new Promise((res,rej)=>{
+    const t=d.transaction(DBS,mode), s=t.objectStore(DBS);
+    let out; try{ out=fn(s); }catch(e){ return rej(e); }
+    t.oncomplete=()=>res(out&&out.result!==undefined?out.result:out);
+    t.onerror=()=>rej(t.error);
+  }));
+}
+const putFilm  = rec => tx('readwrite', s=>s.add(rec));
+const setFilm  = rec => tx('readwrite', s=>s.put(rec));
+const getFilms = ()  => tx('readonly',  s=>s.getAll());
+const delFilm  = id  => tx('readwrite', s=>s.delete(id));
+
+/* in memory, oldest first — the timeline reads straight off this */
+let LIB=[];
+/* three kinds of entry: a real recording (blob), a seeded example that plays
+   from a file on disk (src), and a film taken with no camera at all, which is
+   still a dated entry in the timeline — it just has nothing to play */
+const libUrl = r => r.blob ? (r.url || (r.url=URL.createObjectURL(r.blob))) : (r.src || null);
+const hasFilm = r => !!libUrl(r);
+const libFor  = bid       => LIB.filter(r=>r.bid===bid);
+const libStep = (bid,idx) => LIB.filter(r=>r.bid===bid&&r.idx===idx);
+
+function refreshVID(){
+  /* the newest film of a step is the one the feed plays */
+  B.forEach(b=>{
+    const n=b.kind==='thr'?b.steps.length:6;
+    for(let i=0;i<n;i++){
+      const playable=libStep(b.id,i).filter(hasFilm);
+      if(playable.length) VID[vkey(b,i)]=libUrl(playable[playable.length-1]);
+    }
+  });
+}
+function libCount(){ const el=document.getElementById('libN');
+  el.textContent=LIB.length; el.hidden=!LIB.length; }
+
+/* ---- the worked example ----------------------------------------
+   an empty timeline can't show you what a timeline is for. so the
+   first time the app opens, two real films of the same dog go in:
+   five weeks apart, one rung apart. that is the whole argument for
+   filming, made without a word of explanation.
+   both are tagged EXAMPLE and delete like anything else — and once
+   deleted they stay deleted. */
+const SEED = [
+  {bid:'sit', idx:0, src:'clips/sit-1.mp4', secs:5,  ago:38},
+  {bid:'sit', idx:1, src:'clips/sit-2.mp4', secs:5,  ago:24},
+  {bid:'sit', idx:2, src:'clips/sit-3.mp4', secs:5,  ago:16},
+  {bid:'sit', idx:3, src:'clips/sit-4.mp4', secs:5,  ago:7},
+  {bid:'sit', idx:4, src:'clips/sit-5.mp4', secs:5,  ago:1}
+];
+/* bump the version when the list grows. existing films are left alone and
+   only the missing ones are added, so nothing gets duplicated */
+const SEEDKEY='fetch-seeded-v4';
+async function seedLib(){
+  if(localStorage.getItem(SEEDKEY)) return;
+  localStorage.setItem(SEEDKEY,'1');
+  const have=new Set(LIB.map(r=>r.src).filter(Boolean));
+  for(const s of SEED){
+    if(have.has(s.src)) continue;
+    const rec={bid:s.bid, idx:s.idx, ts:Date.now()-s.ago*DAY, secs:s.secs,
+               mime:'video/mp4', blob:null, src:s.src, ex:1};
+    try{ rec.id=await putFilm(rec); LIB.push(rec); }
+    catch(e){ console.warn('could not seed example:',e.message); return; }
+  }
+  /* re-sync the examples every time the list grows. otherwise the ones stored
+     first keep the dates they were given when they were the whole story, and
+     the timeline reads as four rungs inside a single week */
+  for(const r of LIB){
+    if(!r.ex) continue;
+    const s=SEED.find(x=>x.src===r.src); if(!s) continue;
+    const ts=Date.now()-s.ago*DAY;
+    if(Math.abs(ts-r.ts)>DAY || r.idx!==s.idx || r.secs!==s.secs){
+      r.ts=ts; r.idx=s.idx; r.secs=s.secs;
+      try{ await setFilm(r); }catch(e){}
+    }
+  }
+  LIB.sort((a,b)=>a.ts-b.ts);
+}
+
+async function loadLib(){
+  let rows=[];
+  try{ rows=await getFilms(); }
+  catch(e){ console.warn('film store unavailable:',e.message); return; }
+  LIB=rows.sort((a,b)=>a.ts-b.ts);
+  await seedLib();
+  refreshVID(); libCount();
+  if(LIB.length){ buildAll(); place(false); setActive(); }
+}
+
+/* ---- dates, in the words a person would use ---- */
+const DAY=864e5;
+function whenLabel(ts){
+  const d=new Date(ts), now=new Date();
+  const days=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())
+    - new Date(d.getFullYear(),d.getMonth(),d.getDate()))/DAY);
+  if(days<=0) return 'Today';
+  if(days===1) return 'Yesterday';
+  if(days<7) return days+' days ago';
+  if(days<14) return 'Last week';
+  if(days<62) return Math.round(days/7)+' weeks ago';
+  return Math.round(days/30)+' months ago';
+}
+const dateLabel = ts => new Date(ts).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+/* the library counts in Fetches, not rungs — this is the only place the number
+   is ever shown to an owner, so it is the only place the word had to change */
+function stepLabel(b,i){
+  return b.kind==='thr' ? b.steps[i].v : 'Fetch '+(i+1)+' · '+RUNGS[i].t;
+}
+
+/* ============================ timeline ============================ */
+const tl=document.getElementById('tl'), tlp=document.getElementById('tlp'),
+      tlBody=document.getElementById('tlBody'), tlPick=document.getElementById('tlPick'),
+      tlName=document.getElementById('tlName'), tlSub=document.getElementById('tlSub'),
+      tlpV=document.getElementById('tlpV');
+let tlBid=null;
+
+function openTL(bid){ tlBid=bid||B[R].id; renderTL(); tl.classList.add('on'); }
+function closeTL(){ tl.classList.remove('on'); closeTLP();
+  tlBody.querySelectorAll('video').forEach(v=>{try{v.pause()}catch(e){}}); }
+document.getElementById('tlX').onclick=closeTL;
+document.getElementById('bLib').onclick=()=>openTL(B[R].id);
+
+function renderTL(){
+  const b=B.find(x=>x.id===tlBid)||B[R];
+  const mine=libFor(b.id);
+
+  tlPick.innerHTML=B.map(x=>{
+    const n=libFor(x.id).length;
+    return `<button data-b="${x.id}" class="${x.id===b.id?'on':''}">${x.name}${n?' · '+n:''}</button>`;
+  }).join('');
+
+  tlName.textContent=b.name;
+  tlSub.textContent = mine.length
+    ? `${mine.length} FILM${mine.length===1?'':'S'} · FIRST ${dateLabel(mine[0].ts).toUpperCase()}`
+    : 'NOTHING FILMED YET';
+
+  if(!mine.length){
+    tlBody.innerHTML=`<div class="tlempty"><p>No films of ${b.name.toLowerCase()} yet.</p>
+      <span>Press record on the step you're working on. One clip is enough to start a timeline —
+      the second one is where it starts being worth something.</span></div>`;
+    return;
+  }
+
+  /* then and now: the same dog, the same behaviour, months apart */
+  const playable=mine.filter(hasFilm);
+  const first=playable[0], last=playable[playable.length-1];
+  let tn='';
+  if(playable.length>1){
+    const moved=last.idx-first.idx;
+    let lead;
+    if(moved>0) lead=`<b>${moved} step${moved===1?'':'s'} apart.</b> Same dog, same behaviour. Nothing here is finished — this is just how far he has come.`;
+    else if(moved===0) lead=`<b>Same step, both times.</b> That is not nothing: holding a step across ${whenLabel(first.ts).toLowerCase()} is its own result.`;
+    else lead=`<b>He has come back down ${-moved} step${moved===-1?'':'s'}.</b> That happens to every dog. The film is here so you can see what changed, not so you can feel bad about it.`;
+    tn=`<p class="tnlead">${lead}</p>
+      <div class="thennow">
+        <div class="tn"><video src="${libUrl(first)}" muted loop playsinline preload="metadata"></video>
+          <em>THEN</em><span>${stepLabel(b,first.idx)}<br>${whenLabel(first.ts)}</span></div>
+        <div class="tn"><video src="${libUrl(last)}" muted loop playsinline preload="metadata"></video>
+          <em>NOW</em><span>${stepLabel(b,last.idx)}<br>${whenLabel(last.ts)}</span></div>
+      </div>
+      <button class="shbtn" data-shtn="${b.id}"><i>↗</i>Share then and now</button>
+      <p class="shwhere">Makes one vertical film — both clips stacked, dates burned in —
+      and hands it to WhatsApp, Instagram, TikTok or wherever else you send things.</p>`;
+  }
+
+  /* the timeline itself: newest first, each film tagged with where he was */
+  const rows=[...mine].reverse().map((r,k,arr)=>{
+    const prev=arr[k+1];
+    let badge='';
+    if(prev){
+      if(r.idx>prev.idx) badge='<em class="up">MOVED UP</em>';
+      else if(r.idx<prev.idx) badge='<em class="down">CAME BACK DOWN</em>';
+      else badge='<em class="same">SAME STEP</em>';
+    } else badge='<em class="same">FIRST FILM</em>';
+    if(r.ex) badge+='<em class="ex">EXAMPLE</em>';
+    const u=libUrl(r);
+    return `<div class="tlrow">
+      <button class="tlthumb" data-id="${r.id}"${u?'':' disabled style="opacity:.45;cursor:default"'}>
+        ${u?`<video src="${u}" muted playsinline preload="metadata"></video><i>▶</i>`
+           :'<i style="font-size:10px;font-weight:800;letter-spacing:.08em;padding:6px;text-align:center;line-height:1.35">NO<br>FOOTAGE</i>'}</button>
+      <div class="tlmeta">
+        <b>${stepLabel(b,r.idx)}</b>
+        <span>${whenLabel(r.ts)} · ${dateLabel(r.ts)}${r.secs?' · '+r.secs+'s':''}</span>
+        ${badge}
+      </div>
+      ${u?`<button class="tlsh" data-sh="${r.id}" aria-label="Share this film">↗</button>`:''}
+      <button class="tldel" data-del="${r.id}" aria-label="Delete this film">✕</button>
+    </div>`;
+  }).join('');
+
+  tlBody.innerHTML = tn +
+    `<p class="tlgrp">EVERY FILM, NEWEST FIRST</p>${rows}
+     <p class="tlnote">These films live on this device only. Nothing leaves it unless you share it
+     yourself, and there is no feed here for anyone else to see them on.</p>`;
+  tlBody.scrollTop=0;
+}
+
+tlPick.addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-b]'); if(!btn) return;
+  tlBid=btn.dataset.b; renderTL();
+});
+tlBody.addEventListener('click',e=>{
+  const shtn=e.target.closest('[data-shtn]');
+  if(shtn){ shareThenNow(shtn.dataset.shtn); return; }
+  const sh=e.target.closest('[data-sh]');
+  if(sh){ shareOne(Number(sh.dataset.sh)); return; }
+  const play=e.target.closest('.tlthumb');
+  if(play){ openTLP(Number(play.dataset.id)); return; }
+  const del=e.target.closest('.tldel');
+  if(del){ askDelete(Number(del.dataset.del)); }
+});
+
+/* ============================ sharing out ============================
+   there is no web API that posts to instagram or tiktok directly, and
+   any button claiming otherwise would be lying. what actually works on
+   a phone is handing a finished video file to the system share sheet —
+   which is where instagram, tiktok, whatsapp and the rest are listed.
+   so that is what this does: it renders a real file, then hands it over.
+   on a desktop, where there is no share sheet, it saves the file instead
+   and says so.
+===================================================================== */
+const rEl=document.getElementById('render');
+function showRender(t,s){ document.getElementById('renderT').textContent=t;
+  document.getElementById('renderS').textContent=s;
+  document.getElementById('renderB').style.width='0%'; rEl.classList.add('on'); }
+function renderPct(p){ document.getElementById('renderB').style.width=Math.round(p*100)+'%'; }
+function hideRender(){ rEl.classList.remove('on'); }
+
+/* mp4 is what instagram and tiktok actually want. webm is the fallback,
+   and if that is all we can make, say so rather than let the upload fail */
+function shareMime(){
+  if(!window.MediaRecorder) return null;
+  return ['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm']
+    .find(m=>{ try{ return MediaRecorder.isTypeSupported(m) }catch(e){ return false } }) || null;
+}
+
+async function handOver(blob,name,text){
+  const file=new File([blob],name,{type:blob.type||'video/mp4'});
+  /* on a phone this is the whole feature: the system sheet lists WhatsApp,
+     Instagram, TikTok, Messages and everything else already installed */
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],text}); toast('Shared.'); return; }
+    catch(e){ if(e.name==='AbortError'){ return; } }
+  }
+  openShareOpts(blob,name,text);
+}
+
+function saveBlob(blob,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),6000);
+}
+
+/* ---- the fallback sheet ----------------------------------------
+   a desktop browser has no system share sheet, so we make a small
+   one. WhatsApp is the honest awkward case: wa.me opens a chat with
+   the message already typed, but no browser can attach a file to it
+   from a link — so we save the film first and say plainly that it
+   needs attaching. nothing is ever sent without you pressing send.
+----------------------------------------------------------------- */
+const shOpt=document.getElementById('shOpt');
+let shCur=null;
+function openShareOpts(blob,name,text){
+  shCur={blob,name,text};
+  document.getElementById('shOptT').textContent='Send it';
+  document.getElementById('shOptS').textContent =
+    'This browser has no share sheet, so here is ours. On a phone, this step is '+
+    'the normal Share menu with WhatsApp, Instagram and TikTok already in it.';
+  shOpt.classList.add('on');
+}
+function closeShareOpts(){ shOpt.classList.remove('on'); shCur=null; }
+document.getElementById('shOptX').onclick=closeShareOpts;
+shOpt.addEventListener('click',e=>{ if(e.target===shOpt) closeShareOpts(); });
+
+document.getElementById('shSave').onclick=()=>{
+  if(!shCur) return;
+  saveBlob(shCur.blob,shCur.name); closeShareOpts();
+  toast('Saved to your downloads.');
+};
+document.getElementById('shWa').onclick=()=>{
+  if(!shCur) return;
+  /* both of these have to happen inside the click, or the browser
+     treats the new tab as a popup and blocks it */
+  saveBlob(shCur.blob,shCur.name);
+  window.open('https://wa.me/?text='+encodeURIComponent(shCur.text),'_blank','noopener');
+  closeShareOpts();
+  toast('Film saved. Attach it in WhatsApp — the message is already written.');
+};
+
+/* one clip, exactly as filmed. nothing rendered, nothing to wait for */
+async function shareOne(id){
+  const r=LIB.find(x=>x.id===id); if(!r) return;
+  const u=libUrl(r); if(!u){ toast('That entry has no footage to share.'); return; }
+  const b=B.find(x=>x.id===r.bid);
+  try{
+    const blob=r.blob || await (await fetch(u)).blob();
+    await handOver(blob, `charlie-${r.bid}-${new Date(r.ts).toISOString().slice(0,10)}.mp4`,
+      `Charlie · ${b.name} · ${stepLabel(b,r.idx)}`);
+  }catch(e){ toast('Could not read that film: '+e.message); }
+}
+
+const loadVid = src => new Promise((res,rej)=>{
+  const v=document.createElement('video');
+  v.src=src; v.muted=true; v.playsInline=true; v.preload='auto'; v.crossOrigin='anonymous';
+  v.onloadeddata=()=>res(v); v.onerror=()=>rej(new Error('clip would not load'));
+});
+
+/* fill a box with the video, cropped rather than squashed */
+function drawCover(cx,v,x,y,w,h){
+  const vw=v.videoWidth, vh=v.videoHeight; if(!vw||!vh) return;
+  const s=Math.max(w/vw,h/vh), dw=vw*s, dh=vh*s;
+  cx.save(); cx.beginPath(); cx.rect(x,y,w,h); cx.clip();
+  cx.drawImage(v,x+(w-dw)/2,y+(h-dh)/2,dw,dh);
+  cx.restore();
+}
+function chip(cx,txt,x,y,bg,fg){
+  cx.font='800 30px -apple-system,Inter,Helvetica,Arial,sans-serif';
+  const w=cx.measureText(txt).width+40;
+  cx.fillStyle=bg; cx.beginPath(); cx.roundRect(x,y,w,54,27); cx.fill();
+  cx.fillStyle=fg; cx.textBaseline='middle'; cx.fillText(txt,x+20,y+28);
+  return w;
+}
+
+async function shareThenNow(bid){
+  const b=B.find(x=>x.id===bid); if(!b) return;
+  const playable=libFor(bid).filter(hasFilm);
+  if(playable.length<2){ toast('You need two films of the same behaviour before there is a then and now.'); return; }
+  const first=playable[0], last=playable[playable.length-1];
+  const mime=shareMime();
+  if(!mime){ toast('This browser cannot render video. Share a single film instead.'); return; }
+
+  showRender('Making the film','Both clips, stacked, dates burned in.');
+  try{
+    const [va,vb]=await Promise.all([loadVid(libUrl(first)),loadVid(libUrl(last))]);
+    const blob=await composeTN(b,first,last,va,vb,mime);
+    hideRender();
+    const moved=last.idx-first.idx;
+    const line = moved>0 ? `${moved} step${moved===1?'':'s'} apart.` : 'Same dog, months apart.';
+    await handOver(blob, `charlie-${bid}-then-and-now.${mime.includes('mp4')?'mp4':'webm'}`,
+      `Charlie · ${b.name} · ${line}`);
+  }catch(e){ hideRender(); toast('Could not make the film: '+e.message); }
+}
+
+/* 1080x1920 — the shape instagram and tiktok want. then on top, now below */
+function composeTN(b,first,last,va,vb,mime){
+  return new Promise(async (resolve,reject)=>{
+    const W=1080,H=1920,HALF=H/2;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const cx=cv.getContext('2d');
+    const dur=Math.min(10,Math.max(va.duration||5,vb.duration||5));
+
+    let rec;
+    try{
+      rec=new MediaRecorder(cv.captureStream(30),{mimeType:mime,videoBitsPerSecond:8e6});
+    }catch(e){ return reject(new Error('recorder would not start')); }
+    const chunks=[];
+    rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>resolve(new Blob(chunks,{type:mime}));
+
+    va.currentTime=0; vb.currentTime=0; va.loop=true; vb.loop=true;
+    try{ await Promise.all([va.play(),vb.play()]); }
+    catch(e){ return reject(new Error('clips would not play')); }
+
+    rec.start();
+    const t0=performance.now();
+    const tick=()=>{
+      const t=(performance.now()-t0)/1000;
+      drawFrame(cx,W,H,HALF,va,vb,b,first,last);
+      renderPct(Math.min(1,t/dur));
+      if(t>=dur){ va.pause(); vb.pause(); try{rec.stop()}catch(e){} return; }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+function drawFrame(cx,W,H,HALF,va,vb,b,first,last){
+  cx.fillStyle='#0d0b08'; cx.fillRect(0,0,W,H);
+  drawCover(cx,va,0,0,W,HALF-3);
+  drawCover(cx,vb,0,HALF+3,W,HALF-3);
+
+  /* a dark gradient under each caption, so the words survive any footage */
+  [0,HALF].forEach(y=>{
+    const g=cx.createLinearGradient(0,y+HALF-260,0,y+HALF);
+    g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.86)');
+    cx.fillStyle=g; cx.fillRect(0,y+HALF-260,W,260);
+    const g2=cx.createLinearGradient(0,y,0,y+150);
+    g2.addColorStop(0,'rgba(0,0,0,.55)'); g2.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g2; cx.fillRect(0,y,W,150);
+  });
+
+  cx.fillStyle='rgba(255,255,255,.22)'; cx.fillRect(0,HALF-3,W,6);
+
+  chip(cx,'THEN',48,48,'rgba(0,0,0,.6)','#fff');
+  chip(cx,'NOW', 48,HALF+48,'rgba(255,255,255,.92)','#111');
+
+  const label=(y,r)=>{
+    cx.textBaseline='alphabetic';
+    cx.fillStyle='#fff'; cx.font='750 46px -apple-system,Inter,Helvetica,Arial,sans-serif';
+    cx.fillText(stepLabel(b,r.idx),48,y+HALF-120);
+    cx.fillStyle='rgba(255,255,255,.72)'; cx.font='600 34px -apple-system,Inter,Helvetica,Arial,sans-serif';
+    cx.fillText(whenLabel(r.ts)+' · '+dateLabel(r.ts),48,y+HALF-64);
+  };
+  label(0,first); label(HALF,last);
+
+  /* the claim, dead centre on the seam, where the eye goes */
+  const moved=last.idx-first.idx;
+  const line = moved>0 ? `${moved} STEP${moved===1?'':'S'} APART`
+             : moved===0 ? 'HELD IT' : `${-moved} STEP${moved===-1?'':'S'} BACK`;
+  cx.font='850 32px -apple-system,Inter,Helvetica,Arial,sans-serif';
+  const w=cx.measureText(line).width+52;
+  cx.fillStyle='rgba(12,10,8,.9)';
+  cx.beginPath(); cx.roundRect((W-w)/2,HALF-31,w,62,31); cx.fill();
+  cx.strokeStyle='rgba(255,255,255,.22)'; cx.lineWidth=2; cx.stroke();
+  cx.fillStyle='#FFD98E'; cx.textBaseline='middle';
+  cx.fillText(line,(W-w)/2+26,HALF+1);
+
+  cx.fillStyle='rgba(255,255,255,.5)';
+  cx.font='800 28px -apple-system,Inter,Helvetica,Arial,sans-serif';
+  cx.textAlign='right'; cx.fillText('FETCH',W-48,H-52); cx.textAlign='left';
+}
+
+function openTLP(id){
+  const r=LIB.find(x=>x.id===id); if(!r) return;
+  const u=libUrl(r); if(!u){ toast('That entry has no footage — there was no camera at the time.'); return; }
+  const b=B.find(x=>x.id===r.bid);
+  tlpV.src=u; tlpV.loop=true;
+  document.getElementById('tlpT').textContent=stepLabel(b,r.idx);
+  document.getElementById('tlpS').textContent=whenLabel(r.ts)+' · '+dateLabel(r.ts);
+  tlp.classList.add('on');
+  const p=tlpV.play(); if(p&&p.catch) p.catch(()=>{});
+}
+function closeTLP(){ tlp.classList.remove('on'); try{tlpV.pause()}catch(e){} }
+document.getElementById('tlpX').onclick=closeTLP;
+
+/* deleting a film is permanent, so it never happens on one tap */
+function askDelete(id){
+  const r=LIB.find(x=>x.id===id); if(!r) return;
+  const b=B.find(x=>x.id===r.bid);
+  openSheet(`<h4>Delete this film?</h4>
+    <p class="sub">${stepLabel(b,r.idx)} · ${whenLabel(r.ts).toLowerCase()}.
+    This one is gone for good — it is not backed up anywhere, because nothing here ever left the phone.</p>
+    <div class="opts">
+      <button class="opt bad" onclick="doDelete(${id})"><b>Delete it</b>
+        <span>Permanent. The rest of the timeline stays.</span></button>
+      <button class="opt" onclick="closeSheet()"><b>Keep it</b>
+        <span>Even the bad reps are evidence of what changed.</span></button>
+    </div>`);
+}
+window.doDelete=async id=>{
+  closeSheet();
+  const r=LIB.find(x=>x.id===id);
+  try{ await delFilm(id); }catch(e){ toast('Could not delete that film.'); return; }
+  if(r&&r.url) URL.revokeObjectURL(r.url);
+  LIB=LIB.filter(x=>x.id!==id);
+  /* if that was the film the feed was playing, fall back to the one before it */
+  if(r){ const left=libStep(r.bid,r.idx).filter(hasFilm), k=r.bid+':'+r.idx;
+    if(left.length) VID[k]=libUrl(left[left.length-1]); else delete VID[k]; }
+  libCount(); buildAll(); place(false); setActive(); renderTL();
+  setTimeout(()=>toast('Film deleted.'),320);
+};
+
+/* ============================ capture ============================ */
+const capVf=document.getElementById('capVf'), capBtn=document.getElementById('capBtn'),
+      capAim=document.getElementById('capAim'), capTag=document.getElementById('capTag'),
+      capCount=document.getElementById('capCount'), capTime=document.getElementById('capTime');
+let capBusy=false, camStream=null, camRec=null;
+
+document.getElementById('bFilm').onclick=async ()=>{
+  const b=B[R], thr=b.kind==='thr', i=C[R];
+  const lab = thr? b.steps[i].v : 'rung '+(i+1)+' · '+RUNGS[i].t.toLowerCase();
+  capVf.innerHTML=filmHTML(b.scenes[i]||'lounge',b.dog,(b.props&&b.props[i])||'');
+  capVf.querySelectorAll('.scene,.bgw,.subj,.prop,.grain,.light')
+    .forEach(el=>el.style.animationPlayState='running');
+  capTag.textContent = b.name.toUpperCase();
+  capAim.innerHTML = thr
+    ? `Filming <b>${lab}</b>. Point it at him, leave, and let it run.<br><span style="opacity:.6">Watch him afterwards, not the clock.</span>`
+    : `Filming <b>${b.name}</b> at <b>${lab}</b>.<br><span style="opacity:.6">Ten seconds is plenty. One rep is enough.</span>`;
+  cap.classList.add('on');
+
+  /* use the real camera when the browser will give us one */
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('no camera api');
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    capVf.innerHTML='<video class="rv" autoplay muted playsinline></video>';
+    capVf.firstChild.srcObject=camStream;
+    capTag.textContent='CAMERA · '+b.name.toUpperCase();
+  }catch(e){
+    capTag.textContent=b.name.toUpperCase()+' · STAND-IN';
+    capAim.innerHTML+=`<br><span style="opacity:.45;font-size:11.5px">No camera here, so this is a drawn stand-in. Open the file over localhost to film for real, or drop a video onto the phone.</span>`;
+  }
+};
+document.getElementById('capX').onclick=closeCap;
+function stopCam(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; } }
+function closeCap(){
+  clearInterval(capT); clearTimeout(capMax);
+  cap.classList.remove('on','recording'); capBtn.classList.remove('rec');
+  capBusy=false; recording=false; stopCam();
+}
+
+/* tap once to start, tap again to stop. the owner decides how long a rep takes,
+   not us — a settle can be forty seconds, a sit is four */
+const CAP_MAX=60;
+let recording=false, capT=null, capMax=null, capT0=0;
+
+capBtn.onclick=()=>{
+  if(recording){ stopRecording(); return; }
+  if(capBusy) return;
+  capBusy=true;
+  let n=3;
+  const tick=()=>{
+    capCount.textContent=n; capCount.classList.remove('on'); void capCount.offsetWidth; capCount.classList.add('on');
+    n--;
+    if(n>0) setTimeout(tick,700);
+    else setTimeout(record,700);
+  };
+  tick();
+};
+function showTime(){
+  const s=Math.floor((Date.now()-capT0)/1000);
+  capTime.querySelector('span').textContent='0:'+String(Math.min(s,CAP_MAX)).padStart(2,'0');
+}
+function record(){
+  capCount.classList.remove('on');
+  capBtn.classList.add('rec'); cap.classList.add('recording'); capTag.textContent='● RECORDING · TAP TO STOP';
+  recording=true; capT0=Date.now(); showTime();
+  capT=setInterval(showTime,250);
+  capMax=setTimeout(()=>{ if(recording) stopRecording(); }, CAP_MAX*1000);
+
+  if(camStream && window.MediaRecorder){
+    const chunks=[];
+    try{ camRec=new MediaRecorder(camStream); }catch(e){ camRec=null; }
+    if(camRec){
+      camRec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+      camRec.onstop=()=>{
+        const secs=Math.max(1,Math.round((Date.now()-capT0)/1000));
+        const blob=new Blob(chunks,{type:camRec.mimeType||'video/webm'});
+        closeCap(); afterFilm(blob,secs);
+      };
+      camRec.start();
+      return;
+    }
+  }
+  /* no camera: the stand-in still produces a timeline entry, just without footage */
+  camRec=null;
+}
+function stopRecording(){
+  if(!recording) return;
+  recording=false; clearInterval(capT); clearTimeout(capMax);
+  if(camRec && camRec.state!=='inactive'){ try{ camRec.stop(); return; }catch(e){} }
+  const secs=Math.max(1,Math.round((Date.now()-capT0)/1000));
+  closeCap(); afterFilm(null,secs);
+}
+
+async function afterFilm(blob,secs){
+  const b=B[R], thr=b.kind==='thr', i=C[R];
+  const rec={bid:b.id, idx:i, ts:Date.now(), secs:secs||null,
+             mime:blob?blob.type:null, blob:blob||null};
+
+  /* keep it before anything else — the film is the point, the verdict is optional */
+  let saved=false;
+  try{ rec.id=await putFilm(rec); LIB.push(rec); saved=true; }
+  catch(e){ console.warn('could not save film:',e.message); }
+
+  if(blob) VID[vkey(b,i)]=libUrl(rec);
+  const today='today';
+  if(thr){ b.steps[i].clip=today; b.steps[i].note=blob?'Filmed just now, on the camera.':'Filmed just now.'; }
+  else { b.clips[i]=today; b.notes[i]=blob?'Filmed just now, on the camera.':'Filmed just now.'; }
+  if(b.stale && i===b.at) delete b.stale;
+  libCount(); rebuildRow(R);
+
+  const n=libStep(b.id,i).length, all=libFor(b.id).length;
+  const lab = thr? b.steps[i].v : 'rung '+(i+1);
+  const kept = saved
+    ? `Kept on this phone${n>1?` — that's ${n} films of this step now`:''}. ${all>1?'It has joined the timeline.':'It starts the timeline.'}`
+    : `This browser would not let us store it, so it will vanish on refresh.`;
+  openSheet(`<h4>Filmed ${lab}</h4>
+    <p class="sub">${kept} The ${thr?'number':'rung'} only moves if what you just filmed is what he can actually do — so you tell us, honestly.</p>
+    <div class="opts">
+      <button class="opt good" onclick="verdict('up')"><b>${thr?'He was calm the whole time':'He got it about 8 in 10'}</b>
+        <span>${thr?'Then the number moves up. Next time we go a little further.':'That\'s the bar. Rung goes up, and the next one gets harder in one way only.'}</span></button>
+      <button class="opt" onclick="verdict('hold')"><b>${thr?'He coped, but only just':'Somewhere around half'}</b>
+        <span>${thr?'Stay here until it is boring for him. Calm is the thing you are building, not minutes.':'Stay here. Half means the step is too big — more reps at this one is the fast route, not the slow one.'}</span></button>
+      <button class="opt bad" onclick="verdict('down')"><b>${thr?'He struggled':'Worse than it used to be'}</b>
+        <span>We drop it a ${thr?'step':'rung'} and say why. Going backwards is part of it — every dog does it, and an app that hid that would just be lying to you.</span></button>
+    </div>`);
+}
+
+window.verdict=(v)=>{
+  const b=B[R], thr=b.kind==='thr', n=thr?b.steps.length:6;
+  closeSheet();
+  setTimeout(()=>{
+    if(v==='up'){
+      if(b.at<n-1){ b.at=Math.min(n-1,Math.max(b.at,C[R])+1); if(b.peak&&b.at>=b.peak) delete b.peak;
+        C[R]=b.at; rebuildRow(R); place(true); toast(thr?'Moved up to '+b.steps[b.at].v+'. One thing harder, nothing else.':'Rung '+(b.at+1)+'. Nothing is finished — this is just where he holds now.'); }
+      else { rebuildRow(R); toast('Top of the ladder. That means keeping it, not being done with it.'); }
+    } else if(v==='hold'){
+      rebuildRow(R); toast('Staying here. No streak to break — come back when you can.');
+    } else {
+      if(b.at>0){ b.peak=Math.max(b.at,b.peak||0); b.at=b.at-1; C[R]=b.at; rebuildRow(R); place(true);
+        toast(thr?'Dropped to '+b.steps[b.at].v+'. Rebuild from calm — it comes back faster the second time.':'Down to rung '+(b.at+1)+'. That is the system working, not you failing.'); }
+      else { rebuildRow(R); toast('Already at the bottom rung. Start here and go slowly.'); }
+    }
+  },300);
+};
+
+/* ============================ real clips in ============================ */
+/* a dropped file is a film like any other — it joins the timeline too */
+async function assignClip(url,label,file){
+  const b=B[R], thr=b.kind==='thr', i=C[R];
+  let saved=false;
+  if(file){
+    const rec={bid:b.id, idx:i, ts:(file.lastModified||Date.now()), secs:null,
+               mime:file.type||'video/mp4', blob:file};
+    try{ rec.id=await putFilm(rec); LIB.push(rec); LIB.sort((a,c)=>a.ts-c.ts);
+         url=libUrl(rec); saved=true; libCount(); }
+    catch(e){ console.warn('could not save dropped film:',e.message); }
+  }
+  VID[vkey(b,i)]=url;
+  if(thr){ b.steps[i].clip=label; b.steps[i].note='Your own footage.'; }
+  else { b.clips[i]=label; b.notes[i]='Your own footage.'; }
+  if(b.stale && i===b.at) delete b.stale;
+  rebuildRow(R);
+  toast((saved?'Film kept · ':'Clip added to ')+(thr? b.steps[i].v : b.name+' · rung '+(i+1)));
+}
+
+const phone=document.querySelector('.phone'), dropz=document.getElementById('dropz');
+['dragenter','dragover'].forEach(t=>phone.addEventListener(t,e=>{e.preventDefault();dropz.classList.add('on')}));
+['dragleave','dragend'].forEach(t=>phone.addEventListener(t,e=>{e.preventDefault();dropz.classList.remove('on')}));
+phone.addEventListener('drop',e=>{
+  e.preventDefault(); dropz.classList.remove('on');
+  const f=[...(e.dataTransfer.files||[])].find(f=>f.type.startsWith('video/'));
+  if(!f){ toast('That is not a video file.'); return; }
+  assignClip(URL.createObjectURL(f),'today',f);
+});
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>e.preventDefault());
+
+/* anything sitting in clips/ gets picked up: clips/sit-4.mp4 = Sit, rung 4 */
+function probe(url){
+  return new Promise(res=>{
+    const v=document.createElement('video'); let done=false;
+    const finish=ok=>{ if(done)return; done=true; v.onloadedmetadata=v.onerror=null; v.removeAttribute('src'); res(ok); };
+    v.preload='metadata'; v.muted=true;
+    v.onloadedmetadata=()=>finish(true); v.onerror=()=>finish(false);
+    setTimeout(()=>finish(false),4000);
+    v.src=url;
+  });
+}
+async function loadClips(){
+  let man=null;
+  try{ const r=await fetch('clips/manifest.json',{cache:'no-store'}); if(r.ok) man=await r.json(); }catch(e){}
+  const jobs=[];
+  B.forEach(b=>{
+    const n=b.kind==='thr'?b.steps.length:6;
+    for(let i=0;i<n;i++){
+      const k=vkey(b,i);
+      if(man){ if(man[k]) VID[k]=man[k]; continue; }
+      const url=`clips/${b.id}-${i+1}.mp4`;
+      jobs.push(probe(url).then(ok=>{ if(ok) VID[k]=url; }));
+    }
+  });
+  await Promise.all(jobs);
+  const n=Object.keys(VID).length;
+  /* anything the owner filmed themselves outranks a demo file in clips/ */
+  refreshVID();
+  if(n){ buildAll(); place(false); setActive(); toast(n+' real clip'+(n===1?'':'s')+' loaded from clips/'); }
+}
+
+/* ============================ init ============================ */
+async function boot(){
+  measure(); buildAll(); place(false); setActive();
+  await loadLib();
+  loadClips();
+}
+addEventListener('resize',()=>{measure();place(false);});
+boot();
+if(location.hash==='#embed') document.body.classList.add('embed');
+</script>
+</body>
+</html>

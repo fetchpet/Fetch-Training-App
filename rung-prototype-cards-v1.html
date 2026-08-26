@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rung — prototype</title>
+<style>
+  :root{
+    --bg:#f7f5f0; --surface:#fff; --ink:#1a1a17; --muted:#6e6e66; --faint:#9d9d94;
+    --line:#e6e2d8; --line-soft:rgba(0,0,0,.06); --sunken:#f1efe9;
+    --accent:#2f6f4f; --accent-soft:#e3efe7; --accent-ink:#1f5238;
+    --warn-soft:#fdf0dd; --warn-ink:#8a5300;
+    --drop-soft:#f8e6e2; --drop-ink:#a3462f;
+    --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:22px; --r-f:999px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    background:#ddd8d0;color:var(--ink);
+    display:flex;gap:28px;padding:28px;min-height:100vh;align-items:flex-start;
+    justify-content:center;flex-wrap:wrap;
+  }
+  body.embed{padding:12px;gap:0;min-height:0}
+  body.embed .notes{display:none}
+
+  .phone{
+    width:390px;height:844px;flex-shrink:0;background:var(--bg);
+    border-radius:44px;border:11px solid #14140f;position:relative;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.28);
+  }
+  .stage{position:absolute;inset:0;overflow:hidden}
+
+  .screen{
+    position:absolute;inset:0;background:var(--bg);overflow-y:auto;overflow-anchor:none;
+    transform:translateX(105%);transition:transform .34s cubic-bezier(.32,.72,0,1);
+    display:flex;flex-direction:column;padding-bottom:96px;
+  }
+  .screen.active{transform:translateX(0)}
+  .screen.slide-out{transform:translateX(-28%)}
+  .screen.dark{background:#14140f;color:#fff}
+
+  /* ---------- fake video ---------- */
+  .vid{position:relative;overflow:hidden;background:#17160f;display:grid;place-items:center}
+  .vid::before{
+    content:'';position:absolute;inset:-22%;
+    background:radial-gradient(circle at 32% 42%,#5b5544,#1e1d14 68%);
+    animation:pan 7s ease-in-out infinite alternate;
+  }
+  .vid.b::before{background:radial-gradient(circle at 62% 55%,#4a4436,#17160f 66%);animation-duration:8.5s}
+  @keyframes pan{from{transform:scale(1.02) translate(0,0)}to{transform:scale(1.18) translate(-5%,-4%)}}
+  .vid-dog{position:relative;font-size:34px;filter:saturate(.55) brightness(.92);opacity:.9}
+  .vid-bar{position:absolute;left:0;bottom:0;height:2px;background:rgba(255,255,255,.9);
+    animation:fill 4.6s linear infinite;z-index:2}
+  @keyframes fill{from{width:0}to{width:100%}}
+  .vid-lab{position:absolute;left:10px;bottom:9px;z-index:2;font-size:9.5px;font-weight:800;
+    letter-spacing:.09em;color:rgba(255,255,255,.82)}
+
+  /* ---------- home ---------- */
+  .face{
+    margin:52px auto 0;width:104px;height:104px;border-radius:var(--r-f);
+    background:radial-gradient(circle at 38% 34%,#f0d9b6,#d8b98c);
+    display:grid;place-items:center;font-size:48px;
+    box-shadow:0 6px 18px rgba(0,0,0,.09);animation:breathe 5.5s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+  .hi{text-align:center;padding:14px 26px 0}
+  .hi h1{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:0}
+  .hi p{font-size:13px;color:var(--muted);margin:5px 0 0;line-height:1.5}
+
+  .today{
+    margin:20px 18px 0;background:var(--ink);color:#fff;border-radius:var(--r-xl);
+    padding:20px 19px 17px;position:relative;overflow:hidden;
+  }
+  .today .k{font-size:10.5px;font-weight:800;letter-spacing:.11em;opacity:.5;margin:0 0 9px}
+  .today h2{font-size:21px;font-weight:750;letter-spacing:-.025em;margin:0;line-height:1.28}
+  .today .why{font-size:13px;line-height:1.5;opacity:.62;margin:9px 0 0}
+
+  .quick{display:flex;gap:7px;margin:17px 0 0}
+  .quick button{
+    flex:1;padding:12px 4px 11px;border-radius:var(--r-m);border:none;cursor:pointer;
+    font-family:inherit;background:rgba(255,255,255,.11);color:#fff;
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    font-size:11.5px;font-weight:700;letter-spacing:-.005em;transition:background .15s,transform .12s;
+  }
+  .quick button:active{transform:scale(.955);background:rgba(255,255,255,.2)}
+  .quick i{font-style:normal;font-size:17px;line-height:1}
+
+  .today.done{background:var(--accent)}
+  .done-in{text-align:center;padding:6px 0 4px}
+  .done-in .tick{font-size:34px;line-height:1;animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
+  @keyframes pop{0%{transform:scale(.3);opacity:0}100%{transform:scale(1);opacity:1}}
+  .done-in h2{font-size:19px;margin:11px 0 0;font-weight:750;letter-spacing:-.02em}
+  .done-in p{font-size:13px;opacity:.72;margin:7px 0 0;line-height:1.5}
+
+  .badday{
+    margin:12px 18px 0;width:calc(100% - 36px);padding:14px;border-radius:var(--r-l);
+    background:var(--surface);border:1px solid var(--line);cursor:pointer;font-family:inherit;
+    font-size:13.5px;font-weight:700;color:var(--ink);text-align:center;
+  }
+  .badday:active{background:var(--sunken)}
+  .badday span{display:block;font-size:11.5px;font-weight:500;color:var(--muted);margin-top:4px}
+
+  .strip{padding:26px 18px 0}
+  .strip-h{display:flex;align-items:baseline;justify-content:space-between;margin:0 4px 10px}
+  .strip-h p{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);margin:0}
+  .strip-h button{background:none;border:none;font-family:inherit;font-size:12.5px;
+    font-weight:700;color:var(--muted);cursor:pointer;padding:0}
+  .mini{display:flex;gap:8px;overflow-x:auto;padding:2px 4px 6px;scrollbar-width:none}
+  .mini::-webkit-scrollbar{display:none}
+  .mcard{
+    flex:0 0 116px;background:var(--surface);border:1px solid var(--line-soft);
+    border-radius:var(--r-l);padding:12px 12px 11px;cursor:pointer;font-family:inherit;text-align:left;
+  }
+  .mcard:active{background:var(--sunken)}
+  .mcard b{display:block;font-size:13.5px;font-weight:700;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mcard .dots{display:flex;gap:3px;margin:9px 0 8px}
+  .mcard .dots i{height:4px;flex:1;border-radius:var(--r-f);background:var(--sunken)}
+  .mcard .dots i.on{background:var(--accent)}
+  .mcard .dots i.dropped{background:var(--drop-ink)}
+  .mcard span{display:block;font-size:11px;color:var(--muted);line-height:1.35}
+  .mcard.thr .dots i.on{background:#37507f}
+
+  /* ---------- generic ---------- */
+  .top{padding:56px 20px 10px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .back{width:34px;height:34px;border-radius:var(--r-f);border:1px solid var(--line);
+    background:var(--surface);display:grid;place-items:center;cursor:pointer;
+    font-size:16px;color:var(--ink);flex-shrink:0;padding:0}
+  .screen.dark .back{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.16);color:#fff}
+  .top h1{font-size:19px;font-weight:700;margin:0;letter-spacing:-.02em}
+  .top .sub{font-size:12.5px;color:var(--muted);margin:2px 0 0}
+  .screen.dark .top .sub{color:rgba(255,255,255,.5)}
+
+  .hero{padding:56px 20px 4px}
+  .hero h1{font-size:27px;font-weight:800;letter-spacing:-.03em;margin:0}
+  .hero p{font-size:13.5px;color:var(--muted);margin:6px 0 0;line-height:1.5}
+
+  .sec{padding:20px 20px 0}
+  .sec-h{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 9px 2px}
+  .card{background:var(--surface);border-radius:var(--r-l);overflow:hidden;border:1px solid var(--line-soft)}
+  .row{display:flex;align-items:center;gap:13px;padding:14px 15px;cursor:pointer;
+    border:0;border-bottom:1px solid var(--line-soft);background:none;width:100%;
+    text-align:left;font-family:inherit}
+  .row:last-child{border-bottom:none}
+  .row:active{background:var(--sunken)}
+  .row-t{flex:1;min-width:0}
+  .row-t b{display:block;font-size:15px;font-weight:650;letter-spacing:-.01em}
+  .row-t span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+  .chev{color:#c8c4bb;font-size:16px;flex-shrink:0}
+  .rungpill{flex-shrink:0;min-width:38px;height:38px;border-radius:var(--r-m);display:grid;
+    place-items:center;background:var(--accent-soft);color:var(--accent-ink);
+    font-weight:800;font-size:15px;line-height:1;padding:0 8px}
+  .rungpill.thr{background:#e7ecf6;color:#37507f;font-size:12.5px}
+  .rungpill.drop{background:var(--drop-soft);color:var(--drop-ink)}
+  .rungpill small{display:block;font-size:8.5px;font-weight:700;letter-spacing:.06em;opacity:.75;margin-top:2px}
+  .row-t b span.tag,.tag{display:inline-block;width:auto;margin-top:0;font-size:10.5px;
+    font-weight:750;letter-spacing:.03em;padding:3px 8px;border-radius:var(--r-f);vertical-align:1px}
+  .tag.stale{background:var(--warn-soft);color:var(--warn-ink)}
+  .tag.drop{background:var(--drop-soft);color:var(--drop-ink)}
+
+  .note{margin:14px 20px 0;padding:13px 15px;border-radius:var(--r-m);
+    font-size:12.5px;line-height:1.5;background:var(--warn-soft);color:var(--warn-ink)}
+  .note b{font-weight:750}
+  .note.calm{background:var(--sunken);color:var(--muted)}
+
+  .ladder{padding:4px 20px 0}
+  .lr{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft);align-items:flex-start}
+  .lr:last-child{border-bottom:none}
+  .lr-n{width:25px;height:25px;border-radius:var(--r-f);flex-shrink:0;display:grid;place-items:center;
+    font-size:11.5px;font-weight:800;background:var(--sunken);color:var(--faint);margin-top:1px}
+  .lr.done .lr-n{background:var(--accent);color:#fff}
+  .lr.here .lr-n{background:var(--ink);color:#fff}
+  .lr-t b{display:block;font-size:14px;font-weight:700;letter-spacing:-.01em}
+  .lr.todo .lr-t b{color:var(--faint)}
+  .lr-t span{display:block;font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:3px}
+  .lr.todo .lr-t span{color:#b4b0a7}
+  .lr-t b span.lr-here-tag{display:inline-block;width:auto;margin-top:0;font-size:10px;font-weight:800;
+    letter-spacing:.07em;color:var(--ink);background:#efece5;padding:2px 7px;
+    border-radius:var(--r-f);margin-left:7px;vertical-align:1px}
+
+  .next{margin:16px 20px 0;padding:15px 16px;border-radius:var(--r-l);background:var(--ink);color:#fff}
+  .next b{display:block;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+    opacity:.55;margin-bottom:6px}
+  .next p{margin:0;font-size:14.5px;line-height:1.5;font-weight:550}
+  .next em{display:block;font-style:normal;font-size:12.5px;opacity:.6;margin-top:8px;line-height:1.45}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px;padding:2px 20px 0}
+  .chip{font-size:12px;font-weight:650;padding:6px 11px;border-radius:var(--r-f);
+    background:var(--sunken);color:var(--faint)}
+  .chip.on{background:var(--accent-soft);color:var(--accent-ink)}
+
+  .pair{display:flex;gap:10px;padding:2px 20px 0}
+  .clip{flex:1;background:var(--surface);border-radius:var(--r-m);overflow:hidden;
+    border:1px solid var(--line-soft);cursor:pointer;font-family:inherit;padding:0;text-align:left}
+  .clip .vid{height:104px}
+  .clip-v.empty{height:104px;background:var(--sunken);color:#b9b5ac;font-size:20px;
+    display:grid;place-items:center;border-bottom:1px dashed var(--line)}
+  .clip-c{padding:9px 11px 11px}
+  .clip-c b{display:block;font-size:11px;font-weight:800;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--faint)}
+  .clip-c span{display:block;font-size:12.5px;color:var(--ink);margin-top:3px;font-weight:600}
+
+  .hist{padding:2px 20px 0}
+  .hi-r{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line-soft);align-items:baseline}
+  .hi-r:last-child{border-bottom:none}
+  .hi-d{font-size:11.5px;color:var(--faint);width:58px;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .hi-t{font-size:13px;line-height:1.45;flex:1}
+  .hi-t i{font-style:normal;color:var(--muted)}
+
+  .foot{margin-top:auto;padding:18px 20px 22px;flex-shrink:0}
+  .btn{width:100%;padding:15px;border-radius:var(--r-l);border:none;cursor:pointer;
+    font-family:inherit;font-size:15px;font-weight:700;background:var(--ink);color:#fff;letter-spacing:-.01em}
+  .btn:active{opacity:.85}
+  .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+  .btn.light{background:#fff;color:#14140f}
+  .btn+.btn{margin-top:9px}
+  .linkbtn{width:100%;background:none;border:none;cursor:pointer;font-family:inherit;
+    font-size:13px;font-weight:700;color:var(--muted);padding:14px 0 0}
+  .screen.dark .linkbtn{color:rgba(255,255,255,.55)}
+
+  .num{padding:0 20px;text-align:center}
+  .num-big{font-size:52px;font-weight:800;letter-spacing:-.04em;line-height:1;margin:10px 0 0}
+  .num-big small{font-size:19px;font-weight:700;color:var(--muted);letter-spacing:-.01em;margin-left:4px}
+  .num-was{font-size:13.5px;color:var(--muted);margin-top:8px}
+  .num-was b{color:var(--ink);font-weight:750}
+  .bar{height:7px;border-radius:var(--r-f);background:var(--sunken);margin:18px 0 0;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--accent);border-radius:var(--r-f);transition:width .6s}
+  .stepper{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 20px 0}
+  .step{width:46px;height:46px;border-radius:var(--r-f);border:1px solid var(--line);
+    background:var(--surface);font-size:22px;cursor:pointer;font-family:inherit;
+    color:var(--ink);display:grid;place-items:center}
+  .step-v{font-size:26px;font-weight:800;min-width:98px;text-align:center;letter-spacing:-.02em}
+
+  /* ---------- the reveal ---------- */
+  .reveal{position:absolute;inset:0;z-index:80;background:#0f0f0b;color:#fff;
+    display:flex;flex-direction:column;justify-content:center;padding:0 22px;
+    opacity:0;pointer-events:none;transition:opacity .4s}
+  .reveal.on{opacity:1;pointer-events:auto}
+  .rv-k{font-size:11px;font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.42);
+    margin:0 0 8px;text-align:center}
+  .rv-h{font-size:29px;font-weight:800;letter-spacing:-.03em;margin:0 0 20px;text-align:center}
+  .rv-pair{display:flex;gap:5px;border-radius:var(--r-l);overflow:hidden}
+  .rv-pair .vid{flex:1;height:186px}
+  .reveal.on .rv-pair{animation:riseIn .62s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes riseIn{from{opacity:0;transform:translateY(26px) scale(.94)}to{opacity:1;transform:none}}
+  .rv-gap{font-size:12.5px;color:rgba(255,255,255,.5);text-align:center;margin:16px 0 0;
+    letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .rv-line{font-size:19px;font-weight:700;letter-spacing:-.02em;text-align:center;
+    margin:12px 0 0;line-height:1.4}
+  .reveal.on .rv-line{animation:riseIn .6s .5s cubic-bezier(.2,.9,.3,1) both}
+  .rv-foot{margin-top:32px}
+
+  /* ---------- bad day film ---------- */
+  .film{padding:56px 20px 0}
+  .film h1{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:0}
+  .film p{font-size:13.5px;color:rgba(255,255,255,.55);margin:8px 0 0;line-height:1.55}
+  .fcard{margin:20px 20px 0}
+  .fcard .vid{height:158px;border-radius:var(--r-m)}
+  .fcard-p{display:flex;gap:5px;border-radius:var(--r-m);overflow:hidden}
+  .fcard-p .vid{flex:1;border-radius:0}
+  .fcard b{display:block;font-size:16px;font-weight:750;letter-spacing:-.02em;margin:12px 0 0}
+  .fcard span{display:block;font-size:12.5px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.45}
+  .film-end{padding:34px 24px 0;text-align:center}
+  .film-end p{font-size:19px;font-weight:700;letter-spacing:-.02em;line-height:1.45;color:#fff;margin:0}
+
+  /* ---------- progress ---------- */
+  .pcard{margin:0 20px 12px;background:var(--surface);border-radius:var(--r-l);
+    border:1px solid var(--line-soft);overflow:hidden;cursor:pointer;width:calc(100% - 40px);
+    font-family:inherit;text-align:left;padding:0;display:block}
+  .pcard-h{padding:14px 15px 12px}
+  .pcard-h b{display:block;font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+  .pcard-h span{display:block;font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+  .pcard-v{display:flex;gap:2px}
+  .pcard-v .vid{flex:1;height:118px}
+  .pcard-f{padding:11px 15px;display:flex;align-items:center;gap:10px}
+  .pcard-f p{margin:0;flex:1;font-size:12.5px;color:var(--muted);line-height:1.4}
+  .tapview{border:1px solid var(--line);border-radius:var(--r-f);padding:8px 15px;
+    font-size:12.5px;font-weight:750;color:var(--ink);flex-shrink:0}
+
+  .seed{padding:0 20px}
+  .seedcat{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);margin:18px 0 9px 2px}
+
+  .sheet-bg{position:absolute;inset:0;background:rgba(20,20,15,.42);opacity:0;pointer-events:none;
+    transition:opacity .25s;z-index:60}
+  .sheet-bg.on{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);z-index:61;
+    border-radius:24px 24px 0 0;padding:22px 20px 26px;transform:translateY(101%);
+    transition:transform .3s cubic-bezier(.32,.72,0,1);max-height:86%;overflow-y:auto}
+  .sheet.on{transform:translateY(0)}
+  .sheet h2{font-size:19px;font-weight:800;margin:0 0 6px;letter-spacing:-.02em}
+  .sheet p{font-size:13.5px;color:var(--muted);line-height:1.55;margin:0 0 16px}
+  .grab{width:36px;height:4px;border-radius:var(--r-f);background:#ddd8cf;margin:-8px auto 16px}
+  .opt{width:100%;display:flex;gap:13px;align-items:flex-start;padding:15px;margin-bottom:9px;
+    background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-l);
+    cursor:pointer;font-family:inherit;text-align:left}
+  .opt.sel{border-color:var(--ink)}
+  .opt-i{font-size:19px;line-height:1.1;flex-shrink:0}
+  .opt-t b{display:block;font-size:14.5px;font-weight:700}
+  .opt-t span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+
+  .nav{position:absolute;left:0;right:0;bottom:0;height:78px;background:rgba(247,245,240,.94);
+    backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;z-index:40;padding-bottom:14px}
+  .nav button{flex:1;background:none;border:none;cursor:pointer;font-family:inherit;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    font-size:10px;font-weight:700;color:var(--faint);padding:0}
+  .nav button.on{color:var(--ink)}
+  .nav i{font-style:normal;font-size:19px;line-height:1}
+
+  .notes{width:330px;flex-shrink:0;font-size:13px;line-height:1.6;color:#3a382f;padding-top:8px}
+  .notes h2{font-size:15px;margin:0 0 4px}
+  .notes h3{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:#8a867c;margin:22px 0 7px}
+  .notes p{margin:0 0 11px}
+  .notes ul{margin:0 0 11px;padding-left:17px}
+  .notes li{margin-bottom:6px}
+  .notes code{background:#e9e5dd;padding:1px 5px;border-radius:5px;font-size:11.5px}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="stage">
+
+    <!-- ============ HOME ============ -->
+    <div class="screen active" id="s-home">
+      <div class="face">🐕</div>
+      <div class="hi">
+        <h1>Charlie</h1>
+        <p id="hi-sub">—</p>
+      </div>
+
+      <div id="today-slot"></div>
+      <button class="badday" onclick="openFilm()">Feeling like it's not working?
+        <span>Watch how far you've come</span></button>
+
+      <div class="strip">
+        <div class="strip-h"><p>Everything on the go</p>
+          <button onclick="go('s-all')">See all</button></div>
+        <div class="mini" id="mini"></div>
+      </div>
+
+      <div class="foot">
+        <button class="btn ghost" onclick="go('s-add')">Add something to work on</button>
+      </div>
+    </div>
+
+    <!-- ============ ALL ============ -->
+    <div class="screen" id="s-all">
+      <div class="top"><button class="back" onclick="back()">‹</button>
+        <div><h1>Everything on the go</h1><p class="sub">Nothing here is ever finished.</p></div></div>
+      <div id="attention"></div>
+      <div class="sec"><p class="sec-h">Learning a cue</p><div class="card" id="list-cued"></div></div>
+      <div class="sec"><p class="sec-h">Building up slowly</p><div class="card" id="list-thr"></div></div>
+      <div class="foot"><button class="linkbtn" onclick="go('s-loop')">How does a dog actually learn something?</button></div>
+    </div>
+
+    <!-- ============ BEHAVIOUR ============ -->
+    <div class="screen" id="s-beh">
+      <div class="top"><button class="back" onclick="back()">‹</button>
+        <div><h1 id="beh-name">—</h1><p class="sub" id="beh-sub">—</p></div></div>
+      <div id="beh-flag"></div>
+      <div class="sec" style="padding-bottom:0"><p class="sec-h">The six rungs</p></div>
+      <div class="ladder" id="beh-ladder"></div>
+      <div class="next" id="beh-next"></div>
+      <div class="sec"><p class="sec-h">Where it holds up</p></div>
+      <div class="chips" id="beh-chips"></div>
+      <div class="sec"><p class="sec-h">Then and now</p></div>
+      <div class="pair" id="beh-pair"></div>
+      <div class="sec"><p class="sec-h">What's happened</p></div>
+      <div class="hist" id="beh-hist"></div>
+      <div class="foot"><button class="btn" onclick="openLog()">Log a session</button></div>
+    </div>
+
+    <!-- ============ THRESHOLD ============ -->
+    <div class="screen" id="s-thr">
+      <div class="top"><button class="back" onclick="back()">‹</button>
+        <div><h1 id="thr-name">—</h1><p class="sub" id="thr-sub">—</p></div></div>
+      <div class="note" id="thr-warn"></div>
+      <div class="num">
+        <p class="num-big" id="thr-now">—</p>
+        <p class="num-was" id="thr-was">—</p>
+        <div class="bar"><i id="thr-bar"></i></div>
+      </div>
+      <div class="next" id="thr-next"></div>
+      <div class="sec"><p class="sec-h">Log where you got to today</p></div>
+      <div class="stepper">
+        <button class="step" onclick="bump(-1)">−</button>
+        <div class="step-v" id="thr-input">—</div>
+        <button class="step" onclick="bump(1)">+</button>
+      </div>
+      <div class="sec"><p class="sec-h">Then and now</p></div>
+      <div class="pair" id="thr-pair"></div>
+      <div class="sec"><p class="sec-h">What's happened</p></div>
+      <div class="hist" id="thr-hist"></div>
+      <div class="foot"><button class="btn" onclick="saveThr()">Save today's number</button></div>
+    </div>
+
+    <!-- ============ PROGRESS ============ -->
+    <div class="screen" id="s-prog">
+      <div class="hero"><h1>How far you've come</h1>
+        <p>You forget how bad it was. That's the point of filming it.</p></div>
+      <div style="height:14px"></div>
+      <div id="prog-list"></div>
+      <div class="note calm">Clips are simulated here — the moving frames stand in for ten seconds of real video.</div>
+      <div class="foot"></div>
+    </div>
+
+    <!-- ============ BAD DAY FILM ============ -->
+    <div class="screen dark" id="s-film">
+      <div class="film">
+        <h1>Look at that.</h1>
+        <p id="film-lead">—</p>
+      </div>
+      <div id="film-list"></div>
+      <div class="film-end"><p id="film-end">—</p></div>
+      <div class="foot">
+        <button class="btn light" onclick="back()">Alright, keep going</button>
+      </div>
+    </div>
+
+    <!-- ============ LOOP ============ -->
+    <div class="screen" id="s-loop">
+      <div class="top"><button class="back" onclick="back()">‹</button>
+        <div><h1>How dogs learn</h1><p class="sub">One loop. It works for everything.</p></div></div>
+      <div class="note calm" style="margin-top:6px">
+        Most apps teach you a hundred tricks. This one teaches you the six steps every trick goes
+        through — so you can train things nobody wrote a lesson for.
+      </div>
+      <div class="ladder" id="loop-ladder" style="padding-top:8px"></div>
+      <div class="note"><b>The one rule people break:</b> raise one thing at a time. Somewhere new,
+        or for longer, or with more going on — never two at once. That's what causes the slide back.</div>
+      <div class="foot"><button class="btn ghost" onclick="back()">Got it</button></div>
+    </div>
+
+    <!-- ============ ADD ============ -->
+    <div class="screen" id="s-add">
+      <div class="top"><button class="back" onclick="back()">‹</button>
+        <div><h1>What are you working on?</h1><p class="sub">Film it now, while it's still bad.</p></div></div>
+      <div class="seed">
+        <p class="seedcat">Things you teach on a cue</p><div class="card" id="seed-cued"></div>
+        <p class="seedcat">Things you build up slowly</p><div class="card" id="seed-thr"></div>
+      </div>
+      <div class="note"><b>Heads up.</b> Being left alone, and reacting to other dogs, aren't cue
+        training — they're fear. Push them too fast and the dog gets worse, not better. Get a
+        qualified behaviourist involved.</div>
+      <div class="foot"></div>
+    </div>
+
+    <!-- ============ BEFORE ============ -->
+    <div class="screen" id="s-before">
+      <div class="top"><button class="back" onclick="back()">‹</button>
+        <div><h1 id="bf-name">—</h1><p class="sub">Step one</p></div></div>
+      <div class="sec" style="padding-top:10px">
+        <div class="card" style="padding:20px 18px">
+          <p style="margin:0;font-size:16px;font-weight:700;line-height:1.4;letter-spacing:-.01em">
+            Film ten seconds of it going badly.</p>
+          <p style="margin:10px 0 0;font-size:13.5px;color:var(--muted);line-height:1.55">
+            Right now, before anything improves. In eight weeks you won't remember how bad this was —
+            and without this clip there's nothing to hold it against.</p>
+        </div>
+      </div>
+      <div class="pair" style="padding-top:14px">
+        <button class="clip" onclick="captureBefore()" style="flex:1">
+          <div id="bf-tile" class="clip-v empty">📹</div>
+          <div class="clip-c"><b>Before</b><span id="bf-state">Tap to film</span></div>
+        </button>
+      </div>
+      <div class="foot">
+        <button class="btn" onclick="finishAdd()">Add it</button>
+        <button class="linkbtn" onclick="finishAdd(true)">Skip for now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- the reveal -->
+  <div class="reveal" id="reveal">
+    <p class="rv-k" id="rv-k">—</p>
+    <h2 class="rv-h" id="rv-h">—</h2>
+    <div class="rv-pair">
+      <div class="vid"><span class="vid-dog">🐕</span><span class="vid-lab" id="rv-l1">—</span><i class="vid-bar"></i></div>
+      <div class="vid b"><span class="vid-dog">🐕</span><span class="vid-lab" id="rv-l2">—</span><i class="vid-bar"></i></div>
+    </div>
+    <p class="rv-gap" id="rv-gap">—</p>
+    <p class="rv-line" id="rv-line">—</p>
+    <div class="rv-foot">
+      <button class="btn light" onclick="shareReveal()">Send it to someone</button>
+      <button class="linkbtn" onclick="closeReveal()">Not now</button>
+    </div>
+  </div>
+
+  <div class="sheet-bg" id="sheet-bg" onclick="closeLog()"></div>
+  <div class="sheet" id="sheet">
+    <div class="grab"></div>
+    <h2 id="lg-title">How did it go?</h2>
+    <p id="lg-sub">Be honest. The app only knows what you tell it.</p>
+    <div id="lg-opts"></div>
+    <button class="btn" onclick="saveLog()" style="margin-top:6px">Save</button>
+    <button class="linkbtn" onclick="closeLog()">Cancel</button>
+  </div>
+
+  <div class="nav">
+    <button class="on" id="n-home" onclick="tab('s-home')"><i>🐕</i>Charlie</button>
+    <button id="n-prog" onclick="tab('s-prog')"><i>📈</i>Progress</button>
+    <button id="n-loop" onclick="tab('s-loop')"><i>🎓</i>The loop</button>
+  </div>
+</div>
+
+<div class="notes">
+  <h2>Rung — prototype</h2>
+  <p>A dog training tracker built on how a dog actually learns something, rather than a library of lessons.</p>
+
+  <h3>What changed in this pass</h3>
+  <ul>
+    <li><b>Opens on one thing</b>, not a list. Charlie's face and a single instruction.</li>
+    <li><b>One tap to log.</b> Three buttons on the home card. No drilling in.</li>
+    <li><b>The reveal is an event.</b> Clear a rung and the screen goes black and plays the two clips together. It happens <em>to</em> you.</li>
+    <li><b>The bad-day button.</b> "Feeling like it's not working?" plays every then-and-now, oldest first.</li>
+  </ul>
+
+  <h3>Still refuses to</h3>
+  <ul>
+    <li>Keep a streak, or reward you for turning up.</li>
+    <li>Declare mastery. Rung 6 is upkeep, not a trophy.</li>
+    <li>Claim decay it hasn't seen — <code>unverified since March</code>.</li>
+  </ul>
+
+  <h3>Try this</h3>
+  <ul>
+    <li>Tap <b>Went well</b> on the home card — that's the reveal.</li>
+    <li>Tap <b>Feeling like it's not working?</b></li>
+    <li><b>See all</b> → Sit is on the top rung but untested since March.</li>
+  </ul>
+</div>
+
+<script>
+const TODAY = new Date(2026, 7, 26);
+
+const RUNGS = [
+  {n:1,name:'Getting the behaviour',
+   plain:'Lure or catch the move. Reward every single time. Don\u2019t name it yet.',
+   next:'Get them doing it without a treat leading their nose.',
+   ask:'Lure it, and pay every single time.'},
+  {n:2,name:'Losing the treat lure',
+   plain:'Same move, but your hand isn\u2019t holding food any more. The hand signal shrinks.',
+   next:'Start saying the word \u2014 before you help, never after.',
+   ask:'Same move, but with an empty hand.'},
+  {n:3,name:'Adding the word',
+   plain:'You say it, pause, then help if needed. Never the other way round, or the word is just noise.',
+   next:'Get it right and quick about eight times out of ten.',
+   ask:'Say the word, pause, then help. Word first.'},
+  {n:4,name:'Doing it properly',
+   plain:'Right, and fast, most times you ask. Rewards still generous at this point.',
+   next:'Try it somewhere new. One new thing at a time \u2014 never two.',
+   ask:'Ask ten times. You want eight good ones.'},
+  {n:5,name:'Anywhere, not just the kitchen',
+   plain:'It holds up in new places and with things going on. Every new place is nearly a fresh start.',
+   next:'Start making the rewards unpredictable.',
+   ask:'Same thing, new place. Change nothing else.'},
+  {n:6,name:'Keeping it',
+   plain:'Holds on rewards they can\u2019t predict \u2014 treats, but also walks, doors, dinner. This is the top. It isn\u2019t \u201cdone\u201d.',
+   next:'Test it now and again. This rung is the one that quietly slips.',
+   ask:'Just check it still works. Pay him at random.'}
+];
+
+const PLACES = ['Home','Garden','Quiet street','Busy places','Around dogs'];
+
+let items = [
+  {id:'sit',kind:'cued',name:'Sit',rung:6,places:3,before:1,now:1,
+   lastTested:new Date(2026,2,12),dropped:false,
+   hist:[{d:new Date(2026,2,12),t:'Held it outside the cafe with a dog walking past.',s:'Moved to rung 6'},
+         {d:new Date(2026,1,2),t:'Rewards went random \u2014 still solid.',s:''},
+         {d:new Date(2025,10,9),t:'First time in the park.',s:'Moved to rung 5'}]},
+  {id:'recall',kind:'cued',name:'Recall',rung:4,places:1,before:1,now:1,
+   lastTested:new Date(2026,7,24),dropped:false,
+   hist:[{d:new Date(2026,7,24),t:'Nine out of ten in the garden.',s:'Moved to rung 4'},
+         {d:new Date(2026,7,18),t:'Comes on the word alone now, no hand.',s:'Moved to rung 3'},
+         {d:new Date(2026,6,30),t:'Started it.',s:''}]},
+  {id:'leaveit',kind:'cued',name:'Leave it',rung:3,places:1,before:1,now:0,
+   lastTested:new Date(2026,7,25),dropped:true,
+   hist:[{d:new Date(2026,7,25),t:'Ignored me completely with a chip on the pavement.',s:'Slid back to rung 3'},
+         {d:new Date(2026,7,11),t:'Good in the kitchen with food on the floor.',s:'Moved to rung 4'},
+         {d:new Date(2026,6,20),t:'Started it.',s:''}]},
+  {id:'down',kind:'cued',name:'Down',rung:2,places:0,before:1,now:0,
+   lastTested:new Date(2026,7,22),dropped:false,
+   hist:[{d:new Date(2026,7,22),t:'Following the hand without food in it.',s:'Moved to rung 2'},
+         {d:new Date(2026,7,19),t:'Started it.',s:''}]},
+  {id:'alone',kind:'thr',name:'Being left alone',unit:'min',v:22,base:4,step:1,target:60,
+   lastTested:new Date(2026,7,23),before:1,now:1,
+   warn:'This one is anxiety, not obedience. Never jump the number \u2014 going too fast makes it worse. Worth having a behaviourist alongside you.',
+   hist:[{d:new Date(2026,7,23),t:'22 minutes. Settled after two.',s:''},
+         {d:new Date(2026,6,15),t:'14 minutes, no whining on the camera.',s:''},
+         {d:new Date(2026,4,2),t:'Four minutes and he was frantic.',s:'Where we started'}]},
+  {id:'lead',kind:'thr',name:'Walking without pulling',unit:'m',v:400,base:20,step:50,target:1000,
+   lastTested:new Date(2026,7,25),before:1,now:1,warn:'',
+   hist:[{d:new Date(2026,7,25),t:'400m down the main road before he leaned into it.',s:''},
+         {d:new Date(2026,6,8),t:'Got past the postbox. 150m.',s:''},
+         {d:new Date(2026,3,14),t:'Couldn\u2019t get out the gate. 20m.',s:'Where we started'}]}
+];
+
+const SEED_CUED = ['Stay','Wait at the door','Place / go to bed','Drop it','Paw','Spin','Settle on a mat'];
+const SEED_THR  = ['Being left alone','Walking without pulling','Around other dogs','Visitors at the door'];
+
+const $ = id => document.getElementById(id);
+const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const monthsSince = d => (TODAY.getFullYear()-d.getFullYear())*12 + (TODAY.getMonth()-d.getMonth());
+function ago(d){
+  const days = Math.round((TODAY-d)/86400000);
+  if(days<=0) return 'today';
+  if(days===1) return 'yesterday';
+  if(days<14) return days+' days ago';
+  if(days<60) return Math.round(days/7)+' weeks ago';
+  return MON[d.getMonth()];
+}
+const shortDate = d => d.getDate()+' '+MON[d.getMonth()].slice(0,3);
+const isStale = it => monthsSince(it.lastTested) >= 3;
+const byId = id => items.find(x => x.id === id);
+const vid = (cls,label) => `<div class="vid ${cls}"><span class="vid-dog">\ud83d\udc15</span>
+  <span class="vid-lab">${label}</span><i class="vid-bar"></i></div>`;
+
+/* ---------- nav ---------- */
+let hist = ['s-home'];
+let current = 'sit';
+let navSeq = 0;
+
+function show(id){
+  const from = $(hist[hist.length-1]), to = $(id);
+  if(from === to) return;
+  if(from){ from.classList.remove('active'); from.classList.add('slide-out'); }
+  to.classList.remove('slide-out');
+  to.classList.add('active');
+  to.scrollTop = 0;
+  /* A second navigation inside the 380ms window would otherwise let this
+     timer strip .active off the screen the user actually landed on. */
+  const seq = ++navSeq;
+  setTimeout(() => {
+    if(seq !== navSeq) return;
+    document.querySelectorAll('.screen').forEach(s => { if(s !== to) s.classList.remove('active','slide-out'); });
+  }, 380);
+}
+function go(id){ show(id); hist.push(id); syncNav(); }
+function back(){
+  if(hist.length < 2) return;
+  hist.pop();
+  const cur = $(hist[hist.length-1]);
+  document.querySelectorAll('.screen.active').forEach(s => s.classList.remove('active'));
+  cur.classList.remove('slide-out');
+  cur.classList.add('active');
+  syncNav();
+}
+function tab(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active','slide-out'));
+  $(id).classList.add('active');
+  $(id).scrollTop = 0;
+  hist = [id];
+  if(id === 's-prog') renderProgress();
+  syncNav();
+}
+function syncNav(){
+  const t = hist[hist.length-1];
+  $('n-home').classList.toggle('on', t !== 's-prog' && t !== 's-loop');
+  $('n-prog').classList.toggle('on', t === 's-prog');
+  $('n-loop').classList.toggle('on', t === 's-loop');
+}
+
+/* ---------- today ---------- */
+let todayId = null, todayDone = false;
+
+function pickToday(){
+  const cued = items.filter(i => i.kind === 'cued');
+  const drop = cued.find(i => i.dropped);
+  if(drop) return drop;
+  const stale = cued.filter(isStale).sort((a,b) => a.lastTested - b.lastTested)[0];
+  if(stale) return stale;
+  return cued.sort((a,b) => a.lastTested - b.lastTested)[0];
+}
+function renderToday(){
+  const it = pickToday();
+  todayId = it.id;
+  const where = PLACES[it.places];
+  const r = RUNGS[it.rung-1];
+
+  $('hi-sub').textContent = items.length + ' things on the go \u00b7 one of them today';
+
+  if(todayDone){
+    $('today-slot').innerHTML = `<div class="today done"><div class="done-in">
+      <div class="tick">\u2713</div><h2>Logged.</h2>
+      <p>That\u2019s it \u2014 that\u2019s the whole ask. See you tomorrow.</p></div></div>`;
+    return;
+  }
+  let why = it.dropped
+    ? 'This slid back yesterday. Make it easy again and pay him well.'
+    : (isStale(it)
+      ? 'You haven\u2019t tested this since ' + MON[it.lastTested.getMonth()] + '. Worth finding out.'
+      : 'Rung ' + it.rung + ' \u00b7 ' + r.name.toLowerCase() + '.');
+
+  $('today-slot').innerHTML = `<div class="today">
+    <p class="k">TODAY \u00b7 SIXTY SECONDS</p>
+    <h2>${it.name}, ${where.toLowerCase() === 'home' ? 'in the house' : 'in the ' + where.toLowerCase()}</h2>
+    <p class="why">${r.ask} ${why}</p>
+    <div class="quick">
+      <button onclick="quick(1)"><i>\u2713</i>Went well</button>
+      <button onclick="quick(0)"><i>\u2248</i>Mixed</button>
+      <button onclick="quick(-1)"><i>\u2193</i>Rough</button>
+    </div></div>`;
+}
+function quick(move){
+  const it = byId(todayId);
+  const from = it.rung;
+  let line = move === 1 ? 'Right, and quick, most times I asked.'
+    : move === 0 ? 'Some of it landed.' : 'Needed more help than last time.';
+  let stamp = '';
+  if(move === 1 && it.rung < 6){ it.rung++; it.dropped = false; stamp = 'Moved to rung '+it.rung; }
+  else if(move === -1 && it.rung > 1){ it.rung--; it.dropped = true; stamp = 'Slid back to rung '+it.rung; }
+  else if(move === 1){ it.dropped = false; stamp = 'Held at the top'; }
+  it.lastTested = TODAY;
+  it.hist.unshift({d:TODAY, t:line, s:stamp});
+  todayDone = true;
+  renderToday(); renderMini(); renderLists();
+  if(it.rung > from) setTimeout(() => openReveal(it), 460);
+}
+
+function renderMini(){
+  $('mini').innerHTML = items.map(i => {
+    if(i.kind === 'cued'){
+      const dots = RUNGS.map(r =>
+        `<i class="${r.n <= i.rung ? (i.dropped && r.n === i.rung ? 'on dropped' : 'on') : ''}"></i>`).join('');
+      return `<button class="mcard" onclick="openBeh('${i.id}')"><b>${i.name}</b>
+        <div class="dots">${dots}</div><span>Rung ${i.rung} \u00b7 ${ago(i.lastTested)}</span></button>`;
+    }
+    const pct = Math.min(6, Math.max(1, Math.round(i.v / i.target * 6)));
+    const dots = [1,2,3,4,5,6].map(n => `<i class="${n <= pct ? 'on' : ''}"></i>`).join('');
+    return `<button class="mcard thr" onclick="openThr('${i.id}')"><b>${i.name}</b>
+      <div class="dots">${dots}</div><span>${i.v}${i.unit} \u00b7 was ${i.base}${i.unit}</span></button>`;
+  }).join('');
+}
+
+/* ---------- the reveal ---------- */
+let revealName = '';
+function openReveal(it){
+  const first = it.hist[it.hist.length-1].d, last = TODAY;
+  const weeks = Math.max(1, Math.round((last - first) / 604800000));
+  revealName = it.name;
+  $('rv-k').textContent = 'RUNG ' + it.rung + ' OF 6';
+  $('rv-h').textContent = it.name;
+  $('rv-l1').textContent = shortDate(first).toUpperCase();
+  $('rv-l2').textContent = shortDate(last).toUpperCase();
+  $('rv-gap').textContent = shortDate(first) + ' \u2192 ' + shortDate(last) + ' \u00b7 ' + weeks + ' weeks';
+  $('rv-line').textContent = it.rung === 6
+    ? 'That\u2019s the top rung. Now just keep it there.'
+    : 'He couldn\u2019t do this when you started.';
+  $('reveal').classList.add('on');
+}
+function closeReveal(){ $('reveal').classList.remove('on'); }
+function shareReveal(){
+  const text = 'Charlie \u2014 ' + revealName + '. Then and now.';
+  if(navigator.share) navigator.share({text}).catch(()=>{});
+  else alert('Share sheet\n\n' + text + '\n\n(Goes out through the phone\u2019s normal share sheet \u2014 nothing is posted anywhere.)');
+}
+
+/* ---------- bad day film ---------- */
+function openFilm(){
+  const pairs = items.filter(i => i.before && i.now);
+  const oldest = pairs.map(i => i.hist[i.hist.length-1].d).sort((a,b) => a-b)[0];
+  const weeks = Math.max(1, Math.round((TODAY - oldest) / 604800000));
+  $('film-lead').textContent = 'You started ' + weeks + ' weeks ago, on ' + shortDate(oldest) +
+    '. This is what has actually changed since then.';
+  $('film-list').innerHTML = pairs
+    .sort((a,b) => a.hist[a.hist.length-1].d - b.hist[b.hist.length-1].d)
+    .map(i => {
+      const f = i.hist[i.hist.length-1], l = i.hist[0];
+      const line = i.kind === 'cued'
+        ? 'Rung 1 \u2192 rung ' + i.rung + ' of 6'
+        : i.base + i.unit + ' \u2192 ' + i.v + i.unit;
+      return `<div class="fcard"><div class="fcard-p">
+        ${vid('', shortDate(f.d).toUpperCase())}${vid('b', shortDate(l.d).toUpperCase())}</div>
+        <b>${i.name}</b><span>${line}</span></div>`;
+    }).join('');
+  $('film-end').textContent = 'None of that happened by itself.';
+  go('s-film');
+}
+
+/* ---------- lists ---------- */
+function renderLists(){
+  const cued = items.filter(i => i.kind === 'cued'), thr = items.filter(i => i.kind === 'thr');
+  $('list-cued').innerHTML = cued.map(i => {
+    const tag = i.dropped ? ' <span class="tag drop">slid back</span>'
+      : (isStale(i) ? ' <span class="tag stale">unverified</span>' : '');
+    return `<button class="row" onclick="openBeh('${i.id}')">
+      <div class="rungpill ${i.dropped?'drop':''}">${i.rung}<small>RUNG</small></div>
+      <div class="row-t"><b>${i.name}${tag}</b><span>${RUNGS[i.rung-1].name} \u00b7 ${PLACES.slice(0,i.places+1).join(', ')} \u00b7 ${ago(i.lastTested)}</span></div>
+      <span class="chev">\u203a</span></button>`;
+  }).join('');
+  $('list-thr').innerHTML = thr.map(i =>
+    `<button class="row" onclick="openThr('${i.id}')">
+      <div class="rungpill thr">${i.v}<small>${i.unit.toUpperCase()}</small></div>
+      <div class="row-t"><b>${i.name}</b><span>Was ${i.base}${i.unit} \u00b7 ${ago(i.lastTested)}</span></div>
+      <span class="chev">\u203a</span></button>`).join('');
+
+  const drop = cued.filter(i => i.dropped), stale = cued.filter(isStale);
+  let html = '';
+  if(drop.length) html += `<div class="note"><b>${drop[0].name} slid back a rung.</b> That\u2019s normal \u2014
+    it usually means the place got harder, not that he forgot.</div>`;
+  if(stale.length) html += `<div class="note calm"><b>${stale[0].name} \u2014 rung 6, untested since
+    ${MON[stale[0].lastTested.getMonth()]}.</b> We\u2019re not going to tell you he\u2019s forgotten,
+    because we don\u2019t know.</div>`;
+  $('attention').innerHTML = html;
+}
+
+/* ---------- behaviour ---------- */
+function openBeh(id){ current = id; renderBeh(); go('s-beh'); }
+function renderBeh(){
+  const it = byId(current);
+  $('beh-name').textContent = it.name;
+  $('beh-sub').textContent = 'Rung ' + it.rung + ' of 6 \u00b7 last tried ' + ago(it.lastTested);
+  $('beh-flag').innerHTML = it.dropped
+    ? `<div class="note"><b>This slid back.</b> ${it.hist[0].t} Nothing\u2019s broken \u2014 make it easier
+       and go back to rewarding every time for a week.</div>`
+    : (isStale(it) ? `<div class="note calm">Not tested since ${MON[it.lastTested.getMonth()]}.
+       Status unknown, not lost.</div>` : '');
+  $('beh-ladder').innerHTML = RUNGS.map(r => {
+    const cls = r.n < it.rung ? 'done' : (r.n === it.rung ? 'here' : 'todo');
+    return `<div class="lr ${cls}"><div class="lr-n">${r.n < it.rung ? '\u2713' : r.n}</div>
+      <div class="lr-t"><b>${r.name}${r.n === it.rung ? '<span class="lr-here-tag">HERE</span>' : ''}</b>
+      <span>${r.plain}</span></div></div>`;
+  }).join('');
+  $('beh-next').innerHTML = `<b>Next, and only this</b><p>${RUNGS[it.rung-1].next}</p>
+    <em>Raise one thing at a time. Somewhere new, or for longer, or with more going on \u2014 never two at once.</em>`;
+  $('beh-chips').innerHTML = PLACES.map((p,i) => `<span class="chip ${i <= it.places ? 'on':''}">${p}</span>`).join('');
+  $('beh-pair').innerHTML = clipPair(it);
+  $('beh-hist').innerHTML = it.hist.map(h =>
+    `<div class="hi-r"><div class="hi-d">${shortDate(h.d)}</div>
+     <div class="hi-t">${h.t}${h.s ? ' <i>\u2014 '+h.s+'</i>' : ''}</div></div>`).join('');
+}
+function clipPair(it){
+  const b = it.before
+    ? `${vid('', 'BEFORE')}<div class="clip-c"><b>Before</b><span>${shortDate(it.hist[it.hist.length-1].d)}</span></div>`
+    : `<div class="clip-v empty">\u2014</div><div class="clip-c"><b>Before</b><span style="color:var(--faint);font-weight:500">Never filmed</span></div>`;
+  const n = it.now
+    ? `${vid('b', 'NOW')}<div class="clip-c"><b>Now</b><span>${shortDate(it.hist[0].d)}</span></div>`
+    : `<div class="clip-v empty">\ud83d\udcf9</div><div class="clip-c"><b>Now</b><span style="color:var(--faint);font-weight:500">Tap to film</span></div>`;
+  return `<button class="clip">${b}</button><button class="clip" onclick="filmNow('${it.id}')">${n}</button>`;
+}
+function filmNow(id){
+  const it = byId(id);
+  it.now = 1;
+  if(it.kind === 'cued') renderBeh(); else renderThr();
+}
+
+/* ---------- log sheet ---------- */
+const LOG_OPTS = [
+  {i:'\u2713', b:'Went well', s:'Right, and quick, most times I asked.', move:1},
+  {i:'\u2248', b:'Mixed', s:'Some of it landed. Nothing to change yet.', move:0},
+  {i:'\u2193', b:'Worse than usual', s:'Needed more help than last time.', move:-1}
+];
+let logPick = null;
+function openLog(){
+  const it = byId(current);
+  logPick = null;
+  $('lg-title').textContent = it.name + ' \u2014 how did it go?';
+  $('lg-sub').textContent = 'Be honest. The app only knows what you tell it, and it won\u2019t move you up on its own.';
+  $('lg-opts').innerHTML = LOG_OPTS.map((o,i) =>
+    `<button class="opt" id="lgo-${i}" onclick="pickLog(${i})"><span class="opt-i">${o.i}</span>
+     <span class="opt-t"><b>${o.b}</b><span>${o.s}</span></span></button>`).join('');
+  $('sheet-bg').classList.add('on'); $('sheet').classList.add('on');
+}
+function pickLog(i){ logPick = i; LOG_OPTS.forEach((_,j) => $('lgo-'+j).classList.toggle('sel', i === j)); }
+function closeLog(){ $('sheet-bg').classList.remove('on'); $('sheet').classList.remove('on'); }
+function saveLog(){
+  if(logPick === null){ closeLog(); return; }
+  const it = byId(current), o = LOG_OPTS[logPick], from = it.rung;
+  let stamp = '';
+  if(o.move === 1 && it.rung < 6){ it.rung++; it.dropped = false; stamp = 'Moved to rung '+it.rung; }
+  else if(o.move === -1 && it.rung > 1){ it.rung--; it.dropped = true; stamp = 'Slid back to rung '+it.rung; }
+  else if(o.move === 1){ it.dropped = false; stamp = 'Held at the top'; }
+  it.lastTested = TODAY;
+  it.hist.unshift({d:TODAY, t:o.s, s:stamp});
+  closeLog(); renderBeh(); renderLists(); renderMini(); renderToday();
+  if(it.rung > from) setTimeout(() => openReveal(it), 340);
+}
+
+/* ---------- threshold ---------- */
+let thrDraft = 0;
+function openThr(id){ current = id; thrDraft = byId(id).v; renderThr(); go('s-thr'); }
+function renderThr(){
+  const it = byId(current);
+  $('thr-name').textContent = it.name;
+  $('thr-sub').textContent = 'Last tried ' + ago(it.lastTested);
+  $('thr-warn').innerHTML = it.warn ? '<b>Go slowly.</b> ' + it.warn
+    : 'This isn\u2019t taught on a word \u2014 it builds up. The number can go down, and that\u2019s information, not failure.';
+  $('thr-warn').className = it.warn ? 'note' : 'note calm';
+  $('thr-now').innerHTML = it.v + '<small>' + it.unit + '</small>';
+  $('thr-was').innerHTML = 'Started at <b>' + it.base + it.unit + '</b> on ' + shortDate(it.hist[it.hist.length-1].d);
+  $('thr-bar').style.width = Math.min(100, Math.round(it.v / it.target * 100)) + '%';
+  $('thr-next').innerHTML = `<b>Next, and only this</b><p>Try ${it.v + it.step}${it.unit}. Then stop.</p>
+    <em>If it goes badly, drop back below where it was comfortable. Pushing through is what undoes it.</em>`;
+  $('thr-input').textContent = thrDraft + it.unit;
+  $('thr-pair').innerHTML = clipPair(it);
+  $('thr-hist').innerHTML = it.hist.map(h =>
+    `<div class="hi-r"><div class="hi-d">${shortDate(h.d)}</div>
+     <div class="hi-t">${h.t}${h.s ? ' <i>\u2014 '+h.s+'</i>' : ''}</div></div>`).join('');
+}
+function bump(dir){
+  const it = byId(current);
+  thrDraft = Math.max(0, thrDraft + dir * it.step);
+  $('thr-input').textContent = thrDraft + it.unit;
+}
+function saveThr(){
+  const it = byId(current), down = thrDraft < it.v, up = thrDraft > it.v;
+  it.v = thrDraft;
+  it.lastTested = TODAY;
+  it.hist.unshift({d:TODAY, t:thrDraft + it.unit + ' today.',
+    s: down ? 'Down from before \u2014 fine, stay here a while' : ''});
+  renderThr(); renderLists(); renderMini();
+  if(up) setTimeout(() => openReveal(it), 340);
+}
+
+/* ---------- progress ---------- */
+function renderProgress(){
+  $('prog-list').innerHTML = items.filter(i => i.before && i.now).map(i => {
+    const first = i.hist[i.hist.length-1], last = i.hist[0];
+    const line = i.kind === 'cued'
+      ? 'Rung ' + i.rung + ' of 6 \u00b7 holds in ' + (i.places+1) + ' places'
+      : i.base + i.unit + ' \u2192 ' + i.v + i.unit;
+    const weeks = Math.max(1, Math.round((last.d - first.d) / 604800000));
+    return `<button class="pcard" onclick="openReveal(byId('${i.id}'))">
+      <div class="pcard-h"><b>${i.name}</b><span>${line}</span></div>
+      <div class="pcard-v">${vid('', shortDate(first.d).toUpperCase())}${vid('b', shortDate(last.d).toUpperCase())}</div>
+      <div class="pcard-f"><p>${weeks} weeks apart. He couldn\u2019t do this when you started.</p>
+      <span class="tapview">Play</span></div></button>`;
+  }).join('');
+}
+
+/* ---------- add ---------- */
+let pending = null;
+function renderSeeds(){
+  $('seed-cued').innerHTML = SEED_CUED.map(n =>
+    `<button class="row" onclick="startAdd('${n}','cued')"><div class="row-t"><b>${n}</b></div>
+     <span class="chev">\u203a</span></button>`).join('');
+  $('seed-thr').innerHTML = SEED_THR.map(n =>
+    `<button class="row" onclick="startAdd('${n}','thr')"><div class="row-t"><b>${n}</b></div>
+     <span class="chev">\u203a</span></button>`).join('');
+}
+function startAdd(name, kind){
+  pending = {name, kind, before:0};
+  $('bf-name').textContent = name;
+  $('bf-tile').className = 'clip-v empty';
+  $('bf-tile').innerHTML = '\ud83d\udcf9';
+  $('bf-state').textContent = 'Tap to film';
+  go('s-before');
+}
+function captureBefore(){
+  pending.before = 1;
+  $('bf-tile').className = 'vid';
+  $('bf-tile').innerHTML = '<span class="vid-dog">\ud83d\udc15</span><span class="vid-lab">BEFORE</span><i class="vid-bar"></i>';
+  $('bf-state').textContent = 'Filmed ' + shortDate(TODAY);
+}
+function finishAdd(skipped){
+  const p = pending, id = 'x' + Date.now();
+  const base = {id, kind:p.kind, name:p.name, before: skipped ? 0 : p.before, now:0,
+    lastTested:TODAY, dropped:false,
+    hist:[{d:TODAY, t:'Started it.', s: skipped ? 'No before clip \u2014 nothing to compare to later' : 'Filmed the before'}]};
+  if(p.kind === 'cued') Object.assign(base, {rung:1, places:0});
+  else Object.assign(base, {unit:'min', v:0, base:0, step:1, target:30,
+    warn:'This one is anxiety, not obedience. Never jump the number \u2014 going too fast makes it worse. Worth having a behaviourist alongside you.'});
+  items.push(base);
+  renderLists(); renderMini(); renderToday();
+  tab('s-home');
+}
+
+/* ---------- boot ---------- */
+$('loop-ladder').innerHTML = RUNGS.map(r =>
+  `<div class="lr done"><div class="lr-n">${r.n}</div>
+   <div class="lr-t"><b>${r.name}</b><span>${r.plain}</span></div></div>`).join('');
+renderSeeds(); renderLists(); renderMini(); renderToday(); renderProgress();
+if(new URLSearchParams(location.search).get('embed') === '1') document.body.classList.add('embed');
+</script>
+</body>
+</html>
