@@ -204,9 +204,13 @@
   .dShad{position:absolute;left:50%;bottom:28.5%;width:33%;height:4.6%;
     transform:translateX(-50%);filter:blur(4px);
     background:radial-gradient(closest-side,rgba(0,0,0,.55),transparent 74%)}
-  /* real footage already shows the dog and the hand — only the words stay on top */
+  /* real footage already shows the dog and the hand — only the words stay on top.
+     the "not this" cross and its red tint are illustrated-demo devices, not
+     something to flash over a real, correctly-performed clip */
   .cell.real .dWrap,.cell.real .dHand,.cell.real .dTreat,.cell.real .dShad,
-  .cell.real .dPerson,.cell.real .dDoor,.cell.real .dLead{display:none}
+  .cell.real .dPerson,.cell.real .dDoor,.cell.real .dLead,
+  .cell.real .dNope,.cell.real .dRed,
+  .cell.real .dSay,.cell.real .dMark{display:none}
 
   /* the only words on screen: what it is, and the caption on the video */
   .top{position:absolute;left:20px;right:20px;top:54px;z-index:6}
@@ -333,7 +337,7 @@
   .shbtn{display:flex;width:100%;align-items:center;justify-content:center;gap:9px;
     margin:0 0 20px;padding:13px 16px;border:none;border-radius:var(--r-f);cursor:pointer;
     font-family:inherit;font-size:13.5px;font-weight:750;letter-spacing:-.01em;
-    color:#1a1208;background:linear-gradient(96deg,#FFD98E,#FF9E6B 52%,#FF7A9C);
+    color:#1a1208;background:#FDA9FF;
     transition:transform .14s,filter .14s}
   .shbtn:active{transform:scale(.98)}
   .shbtn:disabled{opacity:.55;cursor:default;transform:none}
@@ -368,12 +372,15 @@
   .shcard{width:100%;background:#1b1a17;border-radius:26px 26px 0 0;padding:22px 20px 26px;
     transform:translateY(14px);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
   .shopt.on .shcard{transform:translateY(0)}
-  .shcard b{display:block;font-size:18px;font-weight:750;letter-spacing:-.02em;margin-bottom:5px}
-  .shcard>div>span{display:block;font-size:12.5px;color:var(--dim);line-height:1.55;margin-bottom:16px}
+  .shcard b{display:block;font-size:18px;font-weight:750;letter-spacing:-.02em;margin-bottom:16px}
   .shcard .shbtn{margin:0 0 9px}
   .shcard .shbtn u{display:block;text-decoration:none;font-size:10.5px;font-weight:600;
     opacity:.72;letter-spacing:0}
   .shcard .shbtn span{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+  .shbtn i{display:inline-flex;align-items:center;justify-content:center}
+  .shbtn.ig{background:linear-gradient(45deg,#FEDA75,#FA7E1E 30%,#D62976 55%,#962FBF 75%,#4F5BD5)}
+  .shbtn.tt{background:#000}
+  .shbtn.pink{background:#FDA9FF;color:#1a1208}
   .shx{display:block;width:100%;margin-top:4px;padding:11px;border:none;background:none;
     color:var(--faint);font-family:inherit;font-size:12.5px;font-weight:650;cursor:pointer}
   .shx:hover{color:#fff}
@@ -384,6 +391,30 @@
   .tlempty p{margin:0 0 8px;font-size:14px;font-weight:700}
   .tlempty span{font-size:12.5px;color:var(--dim);line-height:1.55;display:block}
   .tlnote{margin:22px 0 0;font-size:11.5px;line-height:1.55;color:var(--faint)}
+
+  /* the film list opens on a bright, gallery-style ground rather than the
+     cinematic black used everywhere else — re-theme just this panel */
+  .tl{background:#fff}
+  .tl .tlbar button{background:rgba(0,0,0,.06);color:#111}
+  .tl .tlbar h4{color:#111}
+  .tl .tlbar p{color:rgba(0,0,0,.4)}
+  .tl .tlpick button{background:rgba(0,0,0,.05);color:rgba(0,0,0,.55)}
+  .tl .tlpick button.on{background:#111;color:#fff}
+  .tl .tnlead{color:rgba(0,0,0,.6)}
+  .tl .tnlead b{color:#111}
+  .tl .tlgrp{color:rgba(0,0,0,.4)}
+  .tl .tlrow{border-bottom-color:rgba(0,0,0,.08)}
+  .tl .tlmeta b{color:#111}
+  .tl .tlmeta span{color:rgba(0,0,0,.5)}
+  .tl .tlmeta em.same{background:rgba(0,0,0,.06);color:rgba(0,0,0,.5)}
+  .tl .shbtn.ghost{background:rgba(0,0,0,.08);color:#111}
+  .tl .shwhere{color:rgba(0,0,0,.4)}
+  .tl .tlsh{background:rgba(0,0,0,.06);color:#111}
+  .tl .tlsh:hover{background:rgba(0,0,0,.12)}
+  .tl .tldel{color:rgba(0,0,0,.35)}
+  .tl .tldel:hover{color:var(--slip)}
+  .tl .tlempty p{color:#111}
+  .tl .tlempty span{color:rgba(0,0,0,.5)}
 
   /* full-screen playback of one saved film */
   .tlp{position:absolute;inset:0;z-index:34;background:#000;opacity:0;pointer-events:none;
@@ -435,8 +466,8 @@
   .vdots i{width:3px;height:14px;border-radius:var(--r-f);background:rgba(255,255,255,.22);transition:.2s}
   .vdots i.at{background:#fff;height:22px}
 
-  .brand{position:absolute;left:20px;top:22px;z-index:7;font-size:11px;font-weight:850;
-    letter-spacing:.22em;color:rgba(255,255,255,.65)}
+  .brand{position:absolute;left:20px;top:18px;z-index:7;width:28px;height:28px;
+    border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35)}
   .dogtag{position:absolute;right:16px;top:18px;z-index:7;display:flex;align-items:center;gap:7px;
     font-size:11.5px;font-weight:700;color:rgba(255,255,255,.7)}
   .dogtag u{width:24px;height:24px;border-radius:var(--r-f);display:grid;place-items:center;
@@ -463,10 +494,10 @@
   @keyframes nudge{0%,100%{opacity:.28}50%{opacity:.75}}
 
   /* ---------------- sheet ---------------- */
-  .veil{position:absolute;inset:0;z-index:24;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;
+  .veil{position:absolute;inset:0;z-index:31;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;
     transition:opacity .3s}
   .veil.on{opacity:1;pointer-events:auto}
-  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:25;background:#1b1a17;
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:32;background:#1b1a17;
     border-radius:26px 26px 0 0;padding:10px 20px 30px;transform:translateY(102%);
     transition:transform .38s cubic-bezier(.2,.8,.2,1);max-height:88%;overflow-y:auto}
   .sheet.on{transform:translateY(0)}
@@ -594,6 +625,24 @@
   .cap .aim{position:absolute;left:0;right:0;bottom:190px;z-index:6;text-align:center;padding:0 40px}
   .cap .aim p{margin:0;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.85);
     text-shadow:0 1px 12px rgba(0,0,0,.8)}
+  /* the rest of the iPhone Camera furniture: a zoom pill, the photo/video/
+     cinematic mode strip, and the thumbnail + flip-camera icons either side
+     of the shutter — decorative, so the screen reads as the real thing */
+  .cap-zoom{position:absolute;left:50%;top:100px;transform:translateX(-50%);z-index:6}
+  .cap-zoom button{background:rgba(0,0,0,.42);backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.22);color:#fff;font-family:inherit;
+    font-size:11.5px;font-weight:700;width:28px;height:28px;border-radius:var(--r-f);
+    cursor:default;padding:0}
+  .cap-zoom button.on{background:rgba(255,255,255,.92);color:#111;border-color:transparent}
+  .cap-modebar{position:absolute;left:0;right:0;bottom:140px;z-index:6;
+    display:flex;justify-content:center;gap:20px;font-size:11.5px;font-weight:800;
+    letter-spacing:.05em;color:rgba(255,255,255,.5);text-transform:uppercase;pointer-events:none}
+  .cap-modebar span.on{color:#f7d51d}
+  .cap-thumb{position:absolute;left:34px;bottom:89px;z-index:7;width:44px;height:44px;
+    border-radius:10px;border:1.5px solid rgba(255,255,255,.7);background:rgba(255,255,255,.1)}
+  .cap-flip{position:absolute;right:30px;bottom:87px;z-index:7;width:48px;height:48px;
+    border-radius:var(--r-f);border:none;background:rgba(255,255,255,.14);color:#fff;
+    font-size:18px;cursor:default;display:grid;place-items:center;font-family:inherit}
   .shutter{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:7;
     width:74px;height:74px;border-radius:var(--r-f);border:4px solid rgba(255,255,255,.85);
     background:none;cursor:pointer;display:grid;place-items:center;padding:0}
@@ -632,8 +681,8 @@
   <div class="stage" id="stage">
     <div class="deck" id="deck"></div>
 
-    <div class="brand">FETCH</div>
-    <div class="dogtag"><u>🐕</u>Charlie · 14 mo</div>
+    <img class="brand" src="fetch-logo-mark.png" alt="Fetch">
+    <div class="dogtag"><u>🐕</u>Goldie</div>
 
     <div class="vdots" id="vdots"></div>
     <div class="hdots" id="hdots"></div>
@@ -641,8 +690,8 @@
     <div class="rec">
       <button id="bFilm" class="key" aria-label="Record yourself doing this"><i></i></button>
     </div>
-    <button class="libbtn" id="bLib" aria-label="Everything you have filmed">
-      <b>🎞</b><u id="libN" hidden>0</u>
+    <button class="libbtn" id="bLib" aria-label="Everything you have recorded">
+      <b>📸</b><u id="libN" hidden>0</u>
     </button>
     <div style="display:none">
       <button id="bLad"></button><button id="bShare"></button>
@@ -650,12 +699,12 @@
 
     <div class="coach" id="coach">
       <div>
-        <h4>Just watch. Then do it.</h4>
-        <p>Three swipes. Nothing to read.</p>
+        <h4>Hi George!</h4>
+        <p>I'll teach you how to train Goldie — just follow along.</p>
         <div class="gest">
-          <div><b>→</b><div>Got it<span>Ticked. Next one plays</span></div></div>
-          <div><b>←</b><div>Didn't get it<span>Back a stage</span></div></div>
-          <div><b>↓</b><div>Something new<span>A different thing to teach him</span></div></div>
+          <div><b>→</b><div>Got it — next step!<span>Swipe right to keep going.</span></div></div>
+          <div><b>←</b><div>Oops — need more time.<span>Swipe left to go back and practise again.</span></div></div>
+          <div><b>↓</b><div>Something new!<span>Move down to learn a new trick.</span></div></div>
         </div>
         <button id="coachGo">Start</button>
       </div>
@@ -691,18 +740,26 @@
 
     <div class="cap" id="cap">
       <div class="vf" id="capVf"></div>
-      <div class="capbar"><button id="capX">✕</button><p id="capTag">FILMING</p><span style="width:34px"></span></div>
+      <div class="capbar">
+        <span style="width:34px"></span>
+        <p id="capTag">FILMING</p>
+        <button id="capX" aria-label="Close">✕</button>
+      </div>
+      <div class="cap-zoom"><button class="on">1x</button></div>
       <div class="aim"><p id="capAim"></p></div>
+      <div class="cap-modebar"><span class="on">VIDEO</span></div>
       <svg class="ring" viewBox="0 0 74 74"><circle cx="37" cy="37" r="35"/></svg>
       <div class="rectime" id="capTime"><i></i><span>0:00</span></div>
+      <div class="cap-thumb"></div>
       <button class="shutter" id="capBtn"><i></i></button>
+      <button class="cap-flip" aria-label="Flip camera">🔄</button>
       <div class="count" id="capCount"></div>
     </div>
 
     <div class="tl" id="tl">
       <div class="tlbar">
         <button id="tlX" aria-label="Close">✕</button>
-        <div style="flex:1;min-width:0"><h4 id="tlName">Everything filmed</h4><p id="tlSub"></p></div>
+        <div style="flex:1;min-width:0"><h4 id="tlName">Everything recorded</h4><p id="tlSub"></p></div>
       </div>
       <div class="tlpick" id="tlPick"></div>
       <div class="tlbody" id="tlBody"></div>
@@ -717,16 +774,26 @@
     </div>
 
     <div class="render" id="render"><div>
-      <b id="renderT">Making the film</b>
+      <b id="renderT">Making the video</b>
       <span id="renderS">Both clips, stacked, in one file.</span>
       <div class="rbar"><i id="renderB"></i></div>
     </div></div>
 
     <div class="shopt" id="shOpt"><div class="shcard">
-      <div><b id="shOptT">Send it</b><span id="shOptS"></span></div>
-      <button class="shbtn wa" id="shWa"><i>◆</i><span>Send on WhatsApp
-        <u>Saves the film, then opens WhatsApp to attach it</u></span></button>
-      <button class="shbtn ghost" id="shSave"><i>⬇</i><span>Just save the film
+      <b id="shOptT">Share</b>
+      <button class="shbtn wa" id="shWa">
+        <i><svg viewBox="0 0 24 24" width="21" height="21" fill="#fff"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.84.5 3.56 1.35 5.04L2 22l5.11-1.34A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.46.04-1.02.24-3.4-.72-2.86-1.16-4.7-4.02-4.84-4.2-.14-.18-1.16-1.54-1.16-2.94 0-1.4.74-2.08 1-2.36.26-.28.56-.34.76-.34.2 0 .4 0 .56.02.18.02.42-.06.66.5.24.58.82 2 .9 2.14.08.14.14.32.02.5-.12.18-.18.28-.36.44-.18.16-.38.36-.54.48-.18.14-.36.28-.16.62.2.34.9 1.5 1.94 2.42 1.34 1.2 2.46 1.58 2.8 1.76.34.18.54.14.74-.08.2-.22.86-1 1.1-1.34.24-.34.46-.28.76-.16.3.12 1.94.92 2.28 1.08.34.16.56.24.64.38.08.14.08.8-.14 1.42Z"/></svg></i>
+        <span>WhatsApp</span>
+      </button>
+      <button class="shbtn ig" id="shIg">
+        <i><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.15" cy="6.85" r="1.15" fill="#fff" stroke="none"/></svg></i>
+        <span>Instagram</span>
+      </button>
+      <button class="shbtn tt" id="shTt">
+        <i><svg viewBox="0 0 24 24" width="20" height="20"><path fill="#25F4EE" d="M14.3 2.9c.3 2 1.6 3.6 3.7 4v2.6c-1.3 0-2.6-.4-3.7-1.1v6.3c0 3-2.5 5.5-5.5 5.5S3.3 17.3 3.3 14.3c0-2.9 2.2-5.2 5-5.5v2.7c-1.3.3-2.2 1.4-2.2 2.8 0 1.6 1.3 2.9 2.9 2.9s2.9-1.3 2.9-2.9V2.9h2.4Z" transform="translate(-.5,-.4)"/><path fill="#FE2C55" d="M14.3 2.9c.3 2 1.6 3.6 3.7 4v2.6c-1.3 0-2.6-.4-3.7-1.1v6.3c0 3-2.5 5.5-5.5 5.5S3.3 17.3 3.3 14.3c0-2.9 2.2-5.2 5-5.5v2.7c-1.3.3-2.2 1.4-2.2 2.8 0 1.6 1.3 2.9 2.9 2.9s2.9-1.3 2.9-2.9V2.9h2.4Z" transform="translate(.5,.4)"/><path fill="#fff" d="M14.3 2.9c.3 2 1.6 3.6 3.7 4v2.6c-1.3 0-2.6-.4-3.7-1.1v6.3c0 3-2.5 5.5-5.5 5.5S3.3 17.3 3.3 14.3c0-2.9 2.2-5.2 5-5.5v2.7c-1.3.3-2.2 1.4-2.2 2.8 0 1.6 1.3 2.9 2.9 2.9s2.9-1.3 2.9-2.9V2.9h2.4Z"/></svg></i>
+        <span>TikTok<u>Saves the video, ready to upload</u></span>
+      </button>
+      <button class="shbtn pink" id="shSave"><i>⬇</i><span>Save Goldie's Video
         <u>Then post it wherever you like</u></span></button>
       <button class="shx" id="shOptX">Not now</button>
     </div></div>
@@ -866,10 +933,10 @@ const RUNGS = [
 const B = [
   {
     id:'sit', name:'Sit', kind:'cued', at:4,
-    dog:'🐕', clips:['2 Feb','9 Feb','18 Feb','14 Mar',null,null],
+    dog:'🐕', clips:['2 Feb','9 Feb','18 Feb','14 Mar','24 Aug','26 Aug'],
     scenes:['kitchen','kitchen','kitchen','lounge','park','cafe'],
     props:['🖐️','✋','','','🌳','☕'],
-    notes:['He followed the treat. Twelve in a row.','No food in the hand and he still went down.','First time the word did it on its own.','Eight from ten this morning, cold.',null,null]
+    notes:['He followed the treat. Twelve in a row.','No food in the hand and he still went down.','First time the word did it on its own.','Eight from ten this morning, cold.','Held it outside the shop, dog walking past.','Asked before dinner. First try.']
   },
   {
     id:'door', name:'Wait at the door', kind:'cued', at:2,
@@ -930,7 +997,43 @@ const HOWB={
 };
 const cap1=s=>s.charAt(0).toUpperCase()+s.slice(1);
 
+/* the sit script, written out in full rather than through the generic
+   fill-in-the-blanks system below — it has its own voice and level of detail */
+const SIT_SCRIPT = [
+  [ {c:`Hold a treat between your fingers, right in front of Charlie's nose. Don't say anything yet.`,dog:'stand',hand:[46,37]},
+    {c:`Slowly lift the treat up and back over his head. As his nose follows it, Charlie's bum should naturally lower to the floor.`,dog:'tip',hand:[42,53]},
+    {c:`The moment Charlie's bum touches the floor, mark it: "Good!"`,dog:'sit',mark:true,hand:[42,53]},
+    {c:`Give Charlie the treat straight away. At this stage, every good try gets a reward.`,dog:'sit',treat:true},
+    {c:`Don't add "Sit" just yet. Charlie hasn't learned what the word means, so let's teach him the action first.`,dog:'sit',warn:true} ],
+  [ {c:`Same movement, but this time your hand is empty. Keep the treats in your pocket.`,dog:'stand',hand:[46,37]},
+    {c:`Charlie already knows that following your hand leads to something good, so he'll follow it even when there's no food there.`,dog:'tip',hand:[42,53]},
+    {c:`As soon as Charlie's bum hits the floor, mark it: "Good!"`,dog:'sit',mark:true},
+    {c:`Then get the treat from your pocket and give it to Charlie. The reward comes afterwards — it's not something he needs to see first.`,dog:'sit',treat:true},
+    {c:`If Charlie only sits when he can see the food, he's learning to follow the food rather than your cue. Let's get rid of the lure as soon as we can.`,dog:'sit',warn:true} ],
+  [ {c:`Now we're ready to add the word. Say "Sit." Once, then wait.`,dog:'stand',say:'Sit'},
+    {c:`Give Charlie about a second. If he doesn't do anything, that's okay - he hasn't learned the word yet.`,dog:'stand'},
+    {c:`Now use the hand movement Charlie is already familiar with to help him.`,dog:'tip',hand:[42,53]},
+    {c:`Charlie sits, you mark it "Good!", and then Charlie gets his reward.`,dog:'sit',mark:true,treat:true},
+    {c:`Keep the word first and the hand signal second. We want Charlie to learn that "Sit" is what starts the action, rather than waiting for your hand.`,dog:'tip',say:'Sit',hand:[42,53],warn:true} ],
+  [ {c:`Try 10 sits. Count them if that helps.`,dog:'stand',say:'Sit'},
+    {c:`Ask with the word only — no hand signal, leaning forward or sneaky eyebrow help!`,dog:'stand',say:'Sit'},
+    {c:`You're looking for 8 out of 10 successful sits on the first ask. That's how we know Charlie's really getting it.`,dog:'sit',mark:true},
+    {c:`Once Charlie is doing well, mix things up a little. Ask while you're sitting down, with your back turned, or from another room.`,dog:'sit'},
+    {c:`If Charlie's only getting 5 out of 10, he's not quite ready for the next stage and that's totally fine. Go back to where Charlie was successful and build him back up.`,dog:'stand',warn:true} ],
+  [ {c:`Time to take Charlie outside. But don't make everything harder at once. Pick one thing to change — distance, duration or distractions.`,dog:'stand',say:'Sit'},
+    {c:`Today, let's keep it simple: the bench outside the shop. Everything else stays the same.`,dog:'stand'},
+    {c:`When the world gets a little more exciting, make things easier for Charlie. Shorter asks, easier wins and better rewards.`,dog:'sit',mark:true,treat:true},
+    {c:`Get two good ones and call it there. Leave while Charlie is still doing brilliantly.`,dog:'sit'},
+    {c:`Don't throw Charlie into the deep end. A busy park, off lead, with kids and other dogs is a huge jump. If it's too much, Charlie will struggle — and we don't want Charlie thinking he's failed.`,dog:'stand',warn:true} ],
+  [ {c:`Charlie knows it! Now your job is simply to keep it strong.`,dog:'sit'},
+    {c:`You don't need to reward Charlie every single time anymore. Mix it up so Charlie doesn't know exactly when the treat is coming.`,dog:'sit',treat:true},
+    {c:`Every now and then, surprise Charlie with a really good reward. Those unexpected jackpots help keep the behaviour exciting.`,dog:'sit',mark:true,treat:true},
+    {c:`Ask Charlie for "Sit" as part of everyday life — before you put his lead on, before dinner, or before Charlie gets something he wants.`,dog:'stand',say:'Sit'},
+    {c:`Don't stop rewarding altogether. We want "Sit" to stay worth doing, even when Charlie's pretty sure there's no treat coming.`,dog:'stand',warn:true} ]
+];
+
 function cuedScript(b,r){
+  if(b.id==='sit') return SIT_SCRIPT[r]||[];
   const h=HOWB[b.id]; if(!h) return [];
   const S=[
     [ {c:'Treat between finger and thumb, right at his nose. Say nothing at all.',dog:'stand',hand:[46,37]},
@@ -946,7 +1049,7 @@ function cuedScript(b,r){
     [ {c:`Say it once. "${h.cue}." Then nothing.`,dog:'stand',say:h.cue},
       {c:'Count one second. He does nothing. That silence is the entire lesson.',dog:'stand'},
       {c:`Now ${h.prompt} — the help he already knows.`,dog:'tip',hand:[42,53]},
-      {c:'He does it, you mark it, he gets paid.',dog:h.pose,mark:true,treat:true},
+      {c:'He does it, you mark it, he gets rewarded.',dog:h.pose,mark:true,treat:true},
       {c:'Never the word and the hand at the same time. Together, the word predicts nothing — and he will only ever answer your hand.',dog:'tip',say:h.cue,hand:[42,53],warn:true} ],
     [ {c:'Ten asks. Count them out loud if it helps.',dog:'stand',say:h.cue},
       {c:'Word only. No hand, no lean, no eyebrows.',dog:'stand',say:h.cue},
@@ -956,9 +1059,8 @@ function cuedScript(b,r){
     [ {c:'Pick one thing to make harder. Further away, longer, or busier. One.',dog:'stand',say:h.cue},
       {c:`Today: ${h.hardest}. Nothing else changes.`,dog:'stand'},
       {c:'Drop your standard the moment the world gets louder. Easier reps, better pay.',dog:h.pose,mark:true,treat:true},
-      {c:'Two good ones and stop. Leave while he is still winning.',dog:h.pose},
-      {c:'Park, off lead and children at once is not rung five. It is rung one in a hurricane — he will fail, and you will think he is being stubborn.',dog:'stand',warn:true} ],
-    [ {c:'He knows it. From here it only has to survive.',dog:h.pose},
+      {c:'Two good ones and stop. Leave while he is still winning.',dog:h.pose} ],
+    [ {c:'Charlie knows it. From here - you maintain it.',dog:h.pose},
       {c:'Pay it sometimes. Not every time, and not on a pattern he can work out.',dog:h.pose,treat:true},
       {c:'Every so often, pay stupidly well. That is what keeps it strong.',dog:h.pose,mark:true,treat:true},
       {c:'Ask for it in ordinary life. Before the lead goes on. Before the bowl goes down.',dog:'stand',say:h.cue},
@@ -1079,16 +1181,36 @@ function cellHTML(b,i){
 /* ---- the demo runs inside the cell. this IS the video ---- */
 function demoScript(b,i){ return b.kind==='thr' ? thrScript(b) : cuedScript(b,i); }
 
-function stopDemo(cell){ if(cell&&cell._dt){ clearTimeout(cell._dt); cell._dt=null; } }
+function stopDemo(cell){
+  if(cell&&cell._dt){ clearTimeout(cell._dt); cell._dt=null; }
+  if(cell&&cell._vidEl&&cell._vidOn){ cell._vidEl.removeEventListener('timeupdate',cell._vidOn); cell._vidEl=null; cell._vidOn=null; }
+}
 
 function startDemo(cell,b,i){
   stopDemo(cell);
   const sc=demoScript(b,i); if(!sc||!sc.length) return;
   cell._sc=sc; cell._i=0;
-  playBeat(cell);
+  /* a real clip loops on its own clock (the `loop` attribute, see restartFilm).
+     rather than guess its length on a separate timer and drift against it,
+     watch the clip's own playback and turn the caption exactly when the
+     clip's currentTime jumps back to the start — i.e. the moment it loops */
+  const rv=cell.querySelector('video.rv');
+  if(rv){
+    drawBeat(cell);
+    let last=0;
+    const onTime=()=>{
+      const t=rv.currentTime;
+      if(t<last-0.25){ cell._i=(cell._i+1)%sc.length; drawBeat(cell); }
+      last=t;
+    };
+    rv.addEventListener('timeupdate',onTime);
+    cell._vidEl=rv; cell._vidOn=onTime;
+  } else {
+    playBeat(cell);
+  }
 }
 
-function playBeat(cell){
+function drawBeat(cell){
   const sc=cell._sc, s=sc[cell._i]; if(!s) return;
   const q=sel=>cell.querySelector(sel);
   q('.dCap').textContent=s.c;
@@ -1106,9 +1228,17 @@ function playBeat(cell){
   q('.dNope').classList.toggle('on',!!s.warn);
   const mk=q('.dMark'); mk.classList.remove('on');
   if(s.mark) setTimeout(()=>mk.classList.add('on'),380);
-  const dur = s.warn?5200:3900;
   const bar=q('.bar i');
-  if(bar){ bar.style.transition='none'; bar.style.width=(cell._i/sc.length*100)+'%';
+  if(bar){ bar.style.transition='none'; bar.style.width=((cell._i+1)/sc.length*100)+'%'; }
+}
+
+function playBeat(cell){
+  drawBeat(cell);
+  const sc=cell._sc, s=sc[cell._i]; if(!s) return;
+  const dur = s.warn?5200:3900;
+  const q=sel=>cell.querySelector(sel);
+  const bar=q('.bar i');
+  if(bar){ bar.style.width=(cell._i/sc.length*100)+'%';
     void bar.offsetWidth;
     bar.style.transition=`width ${dur}ms linear`;
     bar.style.width=((cell._i+1)/sc.length*100)+'%'; }
@@ -1184,7 +1314,7 @@ let tcT=0;
 function go(dr,dc){
   if(dr){
     const nr=Math.min(B.length-1,Math.max(0,R+dr));
-    if(nr!==R){R=nr; place(true); setTimeout(setActive,120); haptic();}
+    if(nr!==R){R=nr; place(true); setTimeout(setActive,120); haptic(); savePos();}
     else place(true);
   } else {
     const b=B[R], n=b.kind==='thr'?b.steps.length:6;
@@ -1198,8 +1328,27 @@ function go(dr,dc){
     /* right = got it. left = didn't get it, so it stops being ticked */
     if(dc>0){ DONE[R][from]=true; flashTick(curCell()); }
     else { DONE[R][nc]=false; }
-    C[R]=nc; place(true); setTimeout(setActive,120); haptic();
+    C[R]=nc; place(true); setTimeout(setActive,120); haptic(); savePos();
   }
+}
+
+/* the shelf, remembered: reopening the app returns to the behaviour
+   and rung you were last looking at, not back to the top */
+const POSKEY='fetchTrainingPos';
+function savePos(){
+  try{ localStorage.setItem(POSKEY, JSON.stringify({R,C})); }catch(e){}
+}
+function loadPos(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(POSKEY));
+    if(!saved) return;
+    if(typeof saved.R==='number' && saved.R>=0 && saved.R<B.length) R=saved.R;
+    if(Array.isArray(saved.C)) saved.C.forEach((v,i)=>{
+      if(!B[i] || typeof v!=='number') return;
+      const n=B[i].kind==='thr'?B[i].steps.length:6;
+      if(v>=0 && v<n) C[i]=v;
+    });
+  }catch(e){}
 }
 function flashTick(cell){
   const t=cell&&cell.querySelector('.tick'); if(!t) return;
@@ -1362,7 +1511,7 @@ document.getElementById('bLad').onclick=()=>{
     openSheet(`<h4>${b.name}</h4>
       <p class="sub">This one isn't a ladder — it's a number, and it can go down. You move it when he's calm, never on a schedule.</p>
       <ul class="lad">${b.steps.map((s,i)=>`<li class="${i<b.at?'done':i===b.at?'at':''}">
-        <u>${i+1}</u><div><b>${s.v}</b><span>${s.clip?'Filmed '+s.clip+'. '+(s.note||''):'Not yet.'}</span></div></li>`).join('')}</ul>
+        <u>${i+1}</u><div><b>${s.v}</b><span>${s.clip?'Recorded '+s.clip+'. '+(s.note||''):'Not yet.'}</span></div></li>`).join('')}</ul>
       <p class="sub" style="margin-top:16px">If it stalls or goes backwards for weeks, that's a vet behaviourist, not an app. We'll say so rather than sell you a plan.</p>`);
   } else {
     openSheet(`<h4>${b.name} — the whole climb</h4>
@@ -1460,11 +1609,12 @@ function libCount(){ const el=document.getElementById('libN');
    both are tagged EXAMPLE and delete like anything else — and once
    deleted they stay deleted. */
 const SEED = [
-  {bid:'sit', idx:0, src:'clips/sit-1.mp4', secs:5,  ago:38},
-  {bid:'sit', idx:1, src:'clips/sit-2.mp4', secs:5,  ago:24},
-  {bid:'sit', idx:2, src:'clips/sit-3.mp4', secs:5,  ago:16},
-  {bid:'sit', idx:3, src:'clips/sit-4.mp4', secs:5,  ago:7},
-  {bid:'sit', idx:4, src:'clips/sit-5.mp4', secs:5,  ago:1}
+  {bid:'sit', idx:0, src:'clips/owner/sit-1.mp4', secs:5,  ago:38},
+  {bid:'sit', idx:1, src:'clips/owner/sit-2.mp4', secs:5,  ago:24},
+  {bid:'sit', idx:2, src:'clips/owner/sit-3.mp4', secs:5,  ago:16},
+  {bid:'sit', idx:3, src:'clips/owner/sit-4.mp4', secs:5,  ago:7},
+  {bid:'sit', idx:4, src:'clips/sit-5.mp4', secs:5,  ago:2},
+  {bid:'sit', idx:5, src:'clips/sit-6.mp4', secs:5,  ago:0}
 ];
 /* bump the version when the list grows. existing films are left alone and
    only the missing ones are added, so nothing gets duplicated */
@@ -1522,7 +1672,7 @@ const dateLabel = ts => new Date(ts).toLocaleDateString(undefined,{day:'numeric'
 /* the library counts in Fetches, not rungs — this is the only place the number
    is ever shown to an owner, so it is the only place the word had to change */
 function stepLabel(b,i){
-  return b.kind==='thr' ? b.steps[i].v : 'Fetch '+(i+1)+' · '+RUNGS[i].t;
+  return b.kind==='thr' ? b.steps[i].v : RUNGS[i].t;
 }
 
 /* ============================ timeline ============================ */
@@ -1549,11 +1699,11 @@ function renderTL(){
 
   tlName.textContent=b.name;
   tlSub.textContent = mine.length
-    ? `${mine.length} FILM${mine.length===1?'':'S'} · FIRST ${dateLabel(mine[0].ts).toUpperCase()}`
-    : 'NOTHING FILMED YET';
+    ? `${mine.length} VIDEO${mine.length===1?'':'S'} · FIRST ${dateLabel(mine[0].ts).toUpperCase()}`
+    : 'NOTHING RECORDED YET';
 
   if(!mine.length){
-    tlBody.innerHTML=`<div class="tlempty"><p>No films of ${b.name.toLowerCase()} yet.</p>
+    tlBody.innerHTML=`<div class="tlempty"><p>No videos of ${b.name.toLowerCase()} yet.</p>
       <span>Press record on the step you're working on. One clip is enough to start a timeline —
       the second one is where it starts being worth something.</span></div>`;
     return;
@@ -1561,36 +1711,28 @@ function renderTL(){
 
   /* then and now: the same dog, the same behaviour, months apart */
   const playable=mine.filter(hasFilm);
-  const first=playable[0], last=playable[playable.length-1];
+  /* pick by timestamp explicitly — "now" is always whichever recording
+     actually happened most recently, not just whatever sits last in the list */
+  const first=playable.reduce((a,c)=>c.ts<a.ts?c:a,playable[0]);
+  const last=playable.reduce((a,c)=>c.ts>a.ts?c:a,playable[0]);
   let tn='';
   if(playable.length>1){
-    const moved=last.idx-first.idx;
-    let lead;
-    if(moved>0) lead=`<b>${moved} step${moved===1?'':'s'} apart.</b> Same dog, same behaviour. Nothing here is finished — this is just how far he has come.`;
-    else if(moved===0) lead=`<b>Same step, both times.</b> That is not nothing: holding a step across ${whenLabel(first.ts).toLowerCase()} is its own result.`;
-    else lead=`<b>He has come back down ${-moved} step${moved===-1?'':'s'}.</b> That happens to every dog. The film is here so you can see what changed, not so you can feel bad about it.`;
-    tn=`<p class="tnlead">${lead}</p>
+    tn=`<p class="tnlead">You can create a video capturing Goldie’s journey - share it with loved ones on WhatsApp, Instagram, TikTok, or wherever you like.</p>
       <div class="thennow">
         <div class="tn"><video src="${libUrl(first)}" muted loop playsinline preload="metadata"></video>
           <em>THEN</em><span>${stepLabel(b,first.idx)}<br>${whenLabel(first.ts)}</span></div>
         <div class="tn"><video src="${libUrl(last)}" muted loop playsinline preload="metadata"></video>
           <em>NOW</em><span>${stepLabel(b,last.idx)}<br>${whenLabel(last.ts)}</span></div>
       </div>
-      <button class="shbtn" data-shtn="${b.id}"><i>↗</i>Share then and now</button>
-      <p class="shwhere">Makes one vertical film — both clips stacked, dates burned in —
-      and hands it to WhatsApp, Instagram, TikTok or wherever else you send things.</p>`;
+      <button class="shbtn" data-shtn="${b.id}"><i>↗</i>Share Goldie's Journey</button>`;
   }
 
   /* the timeline itself: newest first, each film tagged with where he was */
   const rows=[...mine].reverse().map((r,k,arr)=>{
     const prev=arr[k+1];
     let badge='';
-    if(prev){
-      if(r.idx>prev.idx) badge='<em class="up">MOVED UP</em>';
-      else if(r.idx<prev.idx) badge='<em class="down">CAME BACK DOWN</em>';
-      else badge='<em class="same">SAME STEP</em>';
-    } else badge='<em class="same">FIRST FILM</em>';
-    if(r.ex) badge+='<em class="ex">EXAMPLE</em>';
+    if(!prev) badge='<em class="same">First Video</em>';
+    else if(r.idx===prev.idx) badge='<em class="same">SAME STEP</em>';
     const u=libUrl(r);
     return `<div class="tlrow">
       <button class="tlthumb" data-id="${r.id}"${u?'':' disabled style="opacity:.45;cursor:default"'}>
@@ -1601,14 +1743,14 @@ function renderTL(){
         <span>${whenLabel(r.ts)} · ${dateLabel(r.ts)}${r.secs?' · '+r.secs+'s':''}</span>
         ${badge}
       </div>
-      ${u?`<button class="tlsh" data-sh="${r.id}" aria-label="Share this film">↗</button>`:''}
-      <button class="tldel" data-del="${r.id}" aria-label="Delete this film">✕</button>
+      ${u?`<button class="tlsh" data-sh="${r.id}" aria-label="Share this video">↗</button>`:''}
+      <button class="tldel" data-del="${r.id}" aria-label="Delete this video">✕</button>
     </div>`;
   }).join('');
 
   tlBody.innerHTML = tn +
-    `<p class="tlgrp">EVERY FILM, NEWEST FIRST</p>${rows}
-     <p class="tlnote">These films live on this device only. Nothing leaves it unless you share it
+    `<p class="tlgrp">EVERY VIDEO, NEWEST FIRST</p>${rows}
+     <p class="tlnote">These videos live on this device only. Nothing leaves it unless you share it
      yourself, and there is no feed here for anyone else to see them on.</p>`;
   tlBody.scrollTop=0;
 }
@@ -1681,10 +1823,7 @@ const shOpt=document.getElementById('shOpt');
 let shCur=null;
 function openShareOpts(blob,name,text){
   shCur={blob,name,text};
-  document.getElementById('shOptT').textContent='Send it';
-  document.getElementById('shOptS').textContent =
-    'This browser has no share sheet, so here is ours. On a phone, this step is '+
-    'the normal Share menu with WhatsApp, Instagram and TikTok already in it.';
+  document.getElementById('shOptT').textContent='Share';
   shOpt.classList.add('on');
 }
 function closeShareOpts(){ shOpt.classList.remove('on'); shCur=null; }
@@ -1703,7 +1842,19 @@ document.getElementById('shWa').onclick=()=>{
   saveBlob(shCur.blob,shCur.name);
   window.open('https://wa.me/?text='+encodeURIComponent(shCur.text),'_blank','noopener');
   closeShareOpts();
-  toast('Film saved. Attach it in WhatsApp — the message is already written.');
+  toast('Video saved. Attach it in WhatsApp — the message is already written.');
+};
+document.getElementById('shIg').onclick=()=>{
+  if(!shCur) return;
+  /* neither instagram nor tiktok have a web link that opens with a file
+     already attached — saving it and saying so plainly is the honest move */
+  saveBlob(shCur.blob,shCur.name); closeShareOpts();
+  toast('Video saved. Open Instagram and attach it from your camera roll.');
+};
+document.getElementById('shTt').onclick=()=>{
+  if(!shCur) return;
+  saveBlob(shCur.blob,shCur.name); closeShareOpts();
+  toast('Video saved. Open TikTok and attach it from your camera roll.');
 };
 
 /* one clip, exactly as filmed. nothing rendered, nothing to wait for */
@@ -1714,8 +1865,8 @@ async function shareOne(id){
   try{
     const blob=r.blob || await (await fetch(u)).blob();
     await handOver(blob, `charlie-${r.bid}-${new Date(r.ts).toISOString().slice(0,10)}.mp4`,
-      `Charlie · ${b.name} · ${stepLabel(b,r.idx)}`);
-  }catch(e){ toast('Could not read that film: '+e.message); }
+      `Goldie · ${b.name} · ${stepLabel(b,r.idx)}`);
+  }catch(e){ toast('Could not read that video: '+e.message); }
 }
 
 const loadVid = src => new Promise((res,rej)=>{
@@ -1742,31 +1893,36 @@ function chip(cx,txt,x,y,bg,fg){
 
 async function shareThenNow(bid){
   const b=B.find(x=>x.id===bid); if(!b) return;
+  /* every saved clip of this behaviour, oldest first — his whole run, not
+     just the first and last of it */
   const playable=libFor(bid).filter(hasFilm);
-  if(playable.length<2){ toast('You need two films of the same behaviour before there is a then and now.'); return; }
-  const first=playable[0], last=playable[playable.length-1];
+  if(playable.length<2){ toast('You need at least two videos of the same behaviour before there is a progress video.'); return; }
   const mime=shareMime();
-  if(!mime){ toast('This browser cannot render video. Share a single film instead.'); return; }
+  if(!mime){ toast('This browser cannot render video. Share a single video instead.'); return; }
 
-  showRender('Making the film','Both clips, stacked, dates burned in.');
+  showRender('Making the video','Every clip, stitched into one — his whole progress so far.');
   try{
-    const [va,vb]=await Promise.all([loadVid(libUrl(first)),loadVid(libUrl(last))]);
-    const blob=await composeTN(b,first,last,va,vb,mime);
+    /* one dead or unreadable clip shouldn't sink the whole reel — read what
+       will load, and use only that */
+    const settled=await Promise.allSettled(playable.map(r=>loadVid(libUrl(r))));
+    const records=[], vids=[];
+    settled.forEach((res,i)=>{ if(res.status==='fulfilled'){ records.push(playable[i]); vids.push(res.value); } });
+    if(vids.length<2){ hideRender(); toast('Fewer than two of his saved clips could actually be read — try again once more of them have loaded.'); return; }
+    const blob=await composeJourney(b,records,vids,mime);
     hideRender();
-    const moved=last.idx-first.idx;
-    const line = moved>0 ? `${moved} step${moved===1?'':'s'} apart.` : 'Same dog, months apart.';
-    await handOver(blob, `charlie-${bid}-then-and-now.${mime.includes('mp4')?'mp4':'webm'}`,
-      `Charlie · ${b.name} · ${line}`);
-  }catch(e){ hideRender(); toast('Could not make the film: '+e.message); }
+    await handOver(blob, `charlie-${bid}-progress.${mime.includes('mp4')?'mp4':'webm'}`,
+      `Goldie · ${b.name} · ${records.length} clips, start to now`);
+  }catch(e){ hideRender(); toast('Could not make the video: '+e.message); }
 }
 
-/* 1080x1920 — the shape instagram and tiktok want. then on top, now below */
-function composeTN(b,first,last,va,vb,mime){
+/* 1080x1920 — the shape instagram and tiktok want. every saved clip, back to
+   back, in the order he filmed them — the whole climb in one file, not just
+   a first-versus-last split */
+function composeJourney(b,records,vids,mime){
   return new Promise(async (resolve,reject)=>{
-    const W=1080,H=1920,HALF=H/2;
+    const W=1080,H=1920, TOTAL_MAX=5, PER_CLIP=Math.max(0.6,TOTAL_MAX/records.length);
     const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     const cx=cv.getContext('2d');
-    const dur=Math.min(10,Math.max(va.duration||5,vb.duration||5));
 
     let rec;
     try{
@@ -1775,64 +1931,50 @@ function composeTN(b,first,last,va,vb,mime){
     const chunks=[];
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>resolve(new Blob(chunks,{type:mime}));
-
-    va.currentTime=0; vb.currentTime=0; va.loop=true; vb.loop=true;
-    try{ await Promise.all([va.play(),vb.play()]); }
-    catch(e){ return reject(new Error('clips would not play')); }
+    vids.forEach(v=>{ v.loop=false; });
 
     rec.start();
-    const t0=performance.now();
-    const tick=()=>{
-      const t=(performance.now()-t0)/1000;
-      drawFrame(cx,W,H,HALF,va,vb,b,first,last);
-      renderPct(Math.min(1,t/dur));
-      if(t>=dur){ va.pause(); vb.pause(); try{rec.stop()}catch(e){} return; }
-      requestAnimationFrame(tick);
+    let clip=0;
+
+    const nextClip=()=>{
+      if(clip>=vids.length){ try{rec.stop()}catch(e){} return; }
+      const v=vids[clip], r=records[clip];
+      v.currentTime=0;
+      v.play().catch(()=>{});
+      const dur=Math.min(PER_CLIP, v.duration||PER_CLIP);
+      const t0=performance.now();
+      const tick=()=>{
+        const t=(performance.now()-t0)/1000;
+        drawJourneyFrame(cx,W,H,v,b,r,clip,vids.length);
+        renderPct((clip+Math.min(1,t/dur))/vids.length);
+        if(t>=dur){ v.pause(); clip++; nextClip(); return; }
+        requestAnimationFrame(tick);
+      };
+      tick();
     };
-    tick();
+    nextClip();
   });
 }
 
-function drawFrame(cx,W,H,HALF,va,vb,b,first,last){
+function drawJourneyFrame(cx,W,H,v,b,r,clip,total){
   cx.fillStyle='#0d0b08'; cx.fillRect(0,0,W,H);
-  drawCover(cx,va,0,0,W,HALF-3);
-  drawCover(cx,vb,0,HALF+3,W,HALF-3);
+  drawCover(cx,v,0,0,W,H);
 
-  /* a dark gradient under each caption, so the words survive any footage */
-  [0,HALF].forEach(y=>{
-    const g=cx.createLinearGradient(0,y+HALF-260,0,y+HALF);
-    g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.86)');
-    cx.fillStyle=g; cx.fillRect(0,y+HALF-260,W,260);
-    const g2=cx.createLinearGradient(0,y,0,y+150);
-    g2.addColorStop(0,'rgba(0,0,0,.55)'); g2.addColorStop(1,'rgba(0,0,0,0)');
-    cx.fillStyle=g2; cx.fillRect(0,y,W,150);
-  });
+  const g=cx.createLinearGradient(0,H-320,0,H);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.86)');
+  cx.fillStyle=g; cx.fillRect(0,H-320,W,320);
 
-  cx.fillStyle='rgba(255,255,255,.22)'; cx.fillRect(0,HALF-3,W,6);
+  /* a thin progress rail across the top — which clip this is, of how many */
+  cx.fillStyle='rgba(255,255,255,.22)'; cx.fillRect(40,64,W-80,6);
+  cx.fillStyle='#FFD98E'; cx.fillRect(40,64,(W-80)*((clip+1)/total),6);
 
-  chip(cx,'THEN',48,48,'rgba(0,0,0,.6)','#fff');
-  chip(cx,'NOW', 48,HALF+48,'rgba(255,255,255,.92)','#111');
+  chip(cx,(clip+1)+' / '+total,48,96,'rgba(0,0,0,.6)','#fff');
 
-  const label=(y,r)=>{
-    cx.textBaseline='alphabetic';
-    cx.fillStyle='#fff'; cx.font='750 46px -apple-system,Inter,Helvetica,Arial,sans-serif';
-    cx.fillText(stepLabel(b,r.idx),48,y+HALF-120);
-    cx.fillStyle='rgba(255,255,255,.72)'; cx.font='600 34px -apple-system,Inter,Helvetica,Arial,sans-serif';
-    cx.fillText(whenLabel(r.ts)+' · '+dateLabel(r.ts),48,y+HALF-64);
-  };
-  label(0,first); label(HALF,last);
-
-  /* the claim, dead centre on the seam, where the eye goes */
-  const moved=last.idx-first.idx;
-  const line = moved>0 ? `${moved} STEP${moved===1?'':'S'} APART`
-             : moved===0 ? 'HELD IT' : `${-moved} STEP${moved===-1?'':'S'} BACK`;
-  cx.font='850 32px -apple-system,Inter,Helvetica,Arial,sans-serif';
-  const w=cx.measureText(line).width+52;
-  cx.fillStyle='rgba(12,10,8,.9)';
-  cx.beginPath(); cx.roundRect((W-w)/2,HALF-31,w,62,31); cx.fill();
-  cx.strokeStyle='rgba(255,255,255,.22)'; cx.lineWidth=2; cx.stroke();
-  cx.fillStyle='#FFD98E'; cx.textBaseline='middle';
-  cx.fillText(line,(W-w)/2+26,HALF+1);
+  cx.textBaseline='alphabetic';
+  cx.fillStyle='#fff'; cx.font='750 46px -apple-system,Inter,Helvetica,Arial,sans-serif';
+  cx.fillText(stepLabel(b,r.idx),48,H-160);
+  cx.fillStyle='rgba(255,255,255,.72)'; cx.font='600 34px -apple-system,Inter,Helvetica,Arial,sans-serif';
+  cx.fillText(whenLabel(r.ts)+' · '+dateLabel(r.ts),48,H-104);
 
   cx.fillStyle='rgba(255,255,255,.5)';
   cx.font='800 28px -apple-system,Inter,Helvetica,Arial,sans-serif';
@@ -1856,9 +1998,7 @@ document.getElementById('tlpX').onclick=closeTLP;
 function askDelete(id){
   const r=LIB.find(x=>x.id===id); if(!r) return;
   const b=B.find(x=>x.id===r.bid);
-  openSheet(`<h4>Delete this film?</h4>
-    <p class="sub">${stepLabel(b,r.idx)} · ${whenLabel(r.ts).toLowerCase()}.
-    This one is gone for good — it is not backed up anywhere, because nothing here ever left the phone.</p>
+  openSheet(`<h4>Delete this video?</h4>
     <div class="opts">
       <button class="opt bad" onclick="doDelete(${id})"><b>Delete it</b>
         <span>Permanent. The rest of the timeline stays.</span></button>
@@ -1869,14 +2009,14 @@ function askDelete(id){
 window.doDelete=async id=>{
   closeSheet();
   const r=LIB.find(x=>x.id===id);
-  try{ await delFilm(id); }catch(e){ toast('Could not delete that film.'); return; }
+  try{ await delFilm(id); }catch(e){ toast('Could not delete that video.'); return; }
   if(r&&r.url) URL.revokeObjectURL(r.url);
   LIB=LIB.filter(x=>x.id!==id);
   /* if that was the film the feed was playing, fall back to the one before it */
   if(r){ const left=libStep(r.bid,r.idx).filter(hasFilm), k=r.bid+':'+r.idx;
     if(left.length) VID[k]=libUrl(left[left.length-1]); else delete VID[k]; }
   libCount(); buildAll(); place(false); setActive(); renderTL();
-  setTimeout(()=>toast('Film deleted.'),320);
+  setTimeout(()=>toast('Video deleted.'),320);
 };
 
 /* ============================ capture ============================ */
@@ -1886,15 +2026,12 @@ const capVf=document.getElementById('capVf'), capBtn=document.getElementById('ca
 let capBusy=false, camStream=null, camRec=null;
 
 document.getElementById('bFilm').onclick=async ()=>{
-  const b=B[R], thr=b.kind==='thr', i=C[R];
-  const lab = thr? b.steps[i].v : 'rung '+(i+1)+' · '+RUNGS[i].t.toLowerCase();
+  const b=B[R], i=C[R];
   capVf.innerHTML=filmHTML(b.scenes[i]||'lounge',b.dog,(b.props&&b.props[i])||'');
   capVf.querySelectorAll('.scene,.bgw,.subj,.prop,.grain,.light')
     .forEach(el=>el.style.animationPlayState='running');
   capTag.textContent = b.name.toUpperCase();
-  capAim.innerHTML = thr
-    ? `Filming <b>${lab}</b>. Point it at him, leave, and let it run.<br><span style="opacity:.6">Watch him afterwards, not the clock.</span>`
-    : `Filming <b>${b.name}</b> at <b>${lab}</b>.<br><span style="opacity:.6">Ten seconds is plenty. One rep is enough.</span>`;
+  capAim.innerHTML = `Record Goldie’s training to track his progress and capture special memories along the way.`;
   cap.classList.add('on');
 
   /* use the real camera when the browser will give us one */
@@ -1983,25 +2120,23 @@ async function afterFilm(blob,secs){
 
   if(blob) VID[vkey(b,i)]=libUrl(rec);
   const today='today';
-  if(thr){ b.steps[i].clip=today; b.steps[i].note=blob?'Filmed just now, on the camera.':'Filmed just now.'; }
-  else { b.clips[i]=today; b.notes[i]=blob?'Filmed just now, on the camera.':'Filmed just now.'; }
+  if(thr){ b.steps[i].clip=today; b.steps[i].note=blob?'Recorded just now, on the camera.':'Recorded just now.'; }
+  else { b.clips[i]=today; b.notes[i]=blob?'Recorded just now, on the camera.':'Recorded just now.'; }
   if(b.stale && i===b.at) delete b.stale;
   libCount(); rebuildRow(R);
 
   const n=libStep(b.id,i).length, all=libFor(b.id).length;
   const lab = thr? b.steps[i].v : 'rung '+(i+1);
   const kept = saved
-    ? `Kept on this phone${n>1?` — that's ${n} films of this step now`:''}. ${all>1?'It has joined the timeline.':'It starts the timeline.'}`
+    ? `Kept on this phone${n>1?` — that's ${n} videos of this step now`:''}. ${all>1?'It has joined the timeline.':'It starts the timeline.'}`
     : `This browser would not let us store it, so it will vanish on refresh.`;
-  openSheet(`<h4>Filmed ${lab}</h4>
-    <p class="sub">${kept} The ${thr?'number':'rung'} only moves if what you just filmed is what he can actually do — so you tell us, honestly.</p>
+  openSheet(`<h4>Recorded ${lab}</h4>
+    <p class="sub">${kept} The ${thr?'number':'rung'} only moves if what you just recorded is what he can actually do — so you tell us, honestly.</p>
     <div class="opts">
       <button class="opt good" onclick="verdict('up')"><b>${thr?'He was calm the whole time':'He got it about 8 in 10'}</b>
         <span>${thr?'Then the number moves up. Next time we go a little further.':'That\'s the bar. Rung goes up, and the next one gets harder in one way only.'}</span></button>
       <button class="opt" onclick="verdict('hold')"><b>${thr?'He coped, but only just':'Somewhere around half'}</b>
         <span>${thr?'Stay here until it is boring for him. Calm is the thing you are building, not minutes.':'Stay here. Half means the step is too big — more reps at this one is the fast route, not the slow one.'}</span></button>
-      <button class="opt bad" onclick="verdict('down')"><b>${thr?'He struggled':'Worse than it used to be'}</b>
-        <span>We drop it a ${thr?'step':'rung'} and say why. Going backwards is part of it — every dog does it, and an app that hid that would just be lying to you.</span></button>
     </div>`);
 }
 
@@ -2011,14 +2146,10 @@ window.verdict=(v)=>{
   setTimeout(()=>{
     if(v==='up'){
       if(b.at<n-1){ b.at=Math.min(n-1,Math.max(b.at,C[R])+1); if(b.peak&&b.at>=b.peak) delete b.peak;
-        C[R]=b.at; rebuildRow(R); place(true); toast(thr?'Moved up to '+b.steps[b.at].v+'. One thing harder, nothing else.':'Rung '+(b.at+1)+'. Nothing is finished — this is just where he holds now.'); }
+        C[R]=b.at; rebuildRow(R); place(true); savePos(); toast(thr?'Moved up to '+b.steps[b.at].v+'. One thing harder, nothing else.':'Rung '+(b.at+1)+'. Nothing is finished — this is just where he holds now.'); }
       else { rebuildRow(R); toast('Top of the ladder. That means keeping it, not being done with it.'); }
     } else if(v==='hold'){
       rebuildRow(R); toast('Staying here. No streak to break — come back when you can.');
-    } else {
-      if(b.at>0){ b.peak=Math.max(b.at,b.peak||0); b.at=b.at-1; C[R]=b.at; rebuildRow(R); place(true);
-        toast(thr?'Dropped to '+b.steps[b.at].v+'. Rebuild from calm — it comes back faster the second time.':'Down to rung '+(b.at+1)+'. That is the system working, not you failing.'); }
-      else { rebuildRow(R); toast('Already at the bottom rung. Start here and go slowly.'); }
     }
   },300);
 };
@@ -2040,7 +2171,7 @@ async function assignClip(url,label,file){
   else { b.clips[i]=label; b.notes[i]='Your own footage.'; }
   if(b.stale && i===b.at) delete b.stale;
   rebuildRow(R);
-  toast((saved?'Film kept · ':'Clip added to ')+(thr? b.steps[i].v : b.name+' · rung '+(i+1)));
+  toast((saved?'Video kept · ':'Clip added to ')+(thr? b.steps[i].v : b.name+' · rung '+(i+1)));
 }
 
 const phone=document.querySelector('.phone'), dropz=document.getElementById('dropz');
@@ -2088,6 +2219,7 @@ async function loadClips(){
 
 /* ============================ init ============================ */
 async function boot(){
+  loadPos();
   measure(); buildAll(); place(false); setActive();
   await loadLib();
   loadClips();
