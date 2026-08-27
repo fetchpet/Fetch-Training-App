@@ -344,7 +344,6 @@
   .shbtn:focus-visible{outline:2px solid #fff;outline-offset:3px}
   .shbtn i{font-style:normal;font-size:15px;line-height:1}
   .shbtn.ghost{background:rgba(255,255,255,.12);color:#fff}
-  .shbtn.wa{background:linear-gradient(96deg,#5BD37A,#25D366)}
   .shwhere{margin:-13px 0 20px;font-size:11px;line-height:1.5;color:var(--faint);text-align:center}
   .tlsh{flex:0 0 auto;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;
     font-family:inherit;font-size:13px;width:32px;height:32px;border-radius:var(--r-f);
@@ -378,12 +377,11 @@
     opacity:.72;letter-spacing:0}
   .shcard .shbtn span{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
   .shbtn i{display:inline-flex;align-items:center;justify-content:center}
-  .shbtn.ig{background:linear-gradient(45deg,#FEDA75,#FA7E1E 30%,#D62976 55%,#962FBF 75%,#4F5BD5)}
-  .shbtn.tt{background:#000}
   .shbtn.pink{background:#FDA9FF;color:#1a1208}
   .shx{display:block;width:100%;margin-top:4px;padding:11px;border:none;background:none;
     color:var(--faint);font-family:inherit;font-size:12.5px;font-weight:650;cursor:pointer}
   .shx:hover{color:#fff}
+
   .tldel{flex:0 0 auto;background:none;border:none;color:var(--faint);font-size:15px;cursor:pointer;
     font-family:inherit;padding:8px}
   .tldel:hover{color:var(--slip)}
@@ -781,20 +779,8 @@
 
     <div class="shopt" id="shOpt"><div class="shcard">
       <b id="shOptT">Share</b>
-      <button class="shbtn wa" id="shWa">
-        <i><svg viewBox="0 0 24 24" width="21" height="21" fill="#fff"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.84.5 3.56 1.35 5.04L2 22l5.11-1.34A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2Zm5.2 14.2c-.22.62-1.28 1.2-1.77 1.24-.46.04-1.02.24-3.4-.72-2.86-1.16-4.7-4.02-4.84-4.2-.14-.18-1.16-1.54-1.16-2.94 0-1.4.74-2.08 1-2.36.26-.28.56-.34.76-.34.2 0 .4 0 .56.02.18.02.42-.06.66.5.24.58.82 2 .9 2.14.08.14.14.32.02.5-.12.18-.18.28-.36.44-.18.16-.38.36-.54.48-.18.14-.36.28-.16.62.2.34.9 1.5 1.94 2.42 1.34 1.2 2.46 1.58 2.8 1.76.34.18.54.14.74-.08.2-.22.86-1 1.1-1.34.24-.34.46-.28.76-.16.3.12 1.94.92 2.28 1.08.34.16.56.24.64.38.08.14.08.8-.14 1.42Z"/></svg></i>
-        <span>WhatsApp</span>
-      </button>
-      <button class="shbtn ig" id="shIg">
-        <i><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.15" cy="6.85" r="1.15" fill="#fff" stroke="none"/></svg></i>
-        <span>Instagram</span>
-      </button>
-      <button class="shbtn tt" id="shTt">
-        <i><svg viewBox="0 0 24 24" width="20" height="20"><path fill="#25F4EE" d="M14.3 2.9c.3 2 1.6 3.6 3.7 4v2.6c-1.3 0-2.6-.4-3.7-1.1v6.3c0 3-2.5 5.5-5.5 5.5S3.3 17.3 3.3 14.3c0-2.9 2.2-5.2 5-5.5v2.7c-1.3.3-2.2 1.4-2.2 2.8 0 1.6 1.3 2.9 2.9 2.9s2.9-1.3 2.9-2.9V2.9h2.4Z" transform="translate(-.5,-.4)"/><path fill="#FE2C55" d="M14.3 2.9c.3 2 1.6 3.6 3.7 4v2.6c-1.3 0-2.6-.4-3.7-1.1v6.3c0 3-2.5 5.5-5.5 5.5S3.3 17.3 3.3 14.3c0-2.9 2.2-5.2 5-5.5v2.7c-1.3.3-2.2 1.4-2.2 2.8 0 1.6 1.3 2.9 2.9 2.9s2.9-1.3 2.9-2.9V2.9h2.4Z" transform="translate(.5,.4)"/><path fill="#fff" d="M14.3 2.9c.3 2 1.6 3.6 3.7 4v2.6c-1.3 0-2.6-.4-3.7-1.1v6.3c0 3-2.5 5.5-5.5 5.5S3.3 17.3 3.3 14.3c0-2.9 2.2-5.2 5-5.5v2.7c-1.3.3-2.2 1.4-2.2 2.8 0 1.6 1.3 2.9 2.9 2.9s2.9-1.3 2.9-2.9V2.9h2.4Z"/></svg></i>
-        <span>TikTok<u>Saves the video, ready to upload</u></span>
-      </button>
       <button class="shbtn pink" id="shSave"><i>⬇</i><span>Save Goldie's Video
-        <u>Then post it wherever you like</u></span></button>
+        <u>Then share it however you like</u></span></button>
       <button class="shx" id="shOptX">Not now</button>
     </div></div>
 
@@ -1609,14 +1595,14 @@ function libCount(){ const el=document.getElementById('libN');
    both are tagged EXAMPLE and delete like anything else — and once
    deleted they stay deleted. */
 const SEED = [
-  {bid:'sit', idx:0, src:'clips/owner/sit-1.mp4', secs:5,  ago:38},
-  {bid:'sit', idx:1, src:'clips/owner/sit-2.mp4', secs:5,  ago:24},
-  {bid:'sit', idx:2, src:'clips/owner/sit-3.mp4', secs:5,  ago:16},
+  {bid:'sit', idx:0, src:'clips/owner/sit-1.mp4', secs:5,  ago:24},
+  {bid:'sit', idx:1, src:'clips/owner/sit-2.mp4', secs:5,  ago:16},
+  {bid:'sit', idx:2, src:'clips/owner/sit-3.mp4', secs:5,  ago:7},
   {bid:'sit', idx:3, src:'clips/owner/sit-4.mp4', secs:5,  ago:0}
 ];
 /* bump the version when the list grows. existing films are left alone and
    only the missing ones are added, so nothing gets duplicated */
-const SEEDKEY='fetch-seeded-v4';
+const SEEDKEY='fetch-seeded-v5';
 async function seedLib(){
   if(localStorage.getItem(SEEDKEY)) return;
   localStorage.setItem(SEEDKEY,'1');
@@ -1715,12 +1701,12 @@ function renderTL(){
   const last=playable.reduce((a,c)=>c.ts>a.ts?c:a,playable[0]);
   let tn='';
   if(playable.length>1){
-    tn=`<p class="tnlead">You can create a video capturing Goldie’s journey - share it with loved ones on WhatsApp, Instagram, TikTok, or wherever you like.</p>
+    tn=`<p class="tnlead">You can create a video capturing Goldie’s journey - save & share it with loved ones</p>
       <div class="thennow">
         <div class="tn"><video src="${libUrl(first)}" muted loop playsinline preload="metadata"></video>
-          <em>THEN</em><span>${stepLabel(b,first.idx)}<br>${whenLabel(first.ts)}</span></div>
+          <em>THEN</em><span>${whenLabel(first.ts)}</span></div>
         <div class="tn"><video src="${libUrl(last)}" muted loop playsinline preload="metadata"></video>
-          <em>NOW</em><span>${stepLabel(b,last.idx)}<br>${whenLabel(last.ts)}</span></div>
+          <em>NOW</em><span>${whenLabel(last.ts)}</span></div>
       </div>
       <button class="shbtn" data-shtn="${b.id}"><i>↗</i>Share Goldie's Journey</button>`;
   }
@@ -1737,8 +1723,7 @@ function renderTL(){
         ${u?`<video src="${u}" muted playsinline preload="metadata"></video><i>▶</i>`
            :'<i style="font-size:10px;font-weight:800;letter-spacing:.08em;padding:6px;text-align:center;line-height:1.35">NO<br>FOOTAGE</i>'}</button>
       <div class="tlmeta">
-        <b>${stepLabel(b,r.idx)}</b>
-        <span>${whenLabel(r.ts)} · ${dateLabel(r.ts)}${r.secs?' · '+r.secs+'s':''}</span>
+        <b>${whenLabel(r.ts)} · ${dateLabel(r.ts)}</b>
         ${badge}
       </div>
       ${u?`<button class="tlsh" data-sh="${r.id}" aria-label="Share this video">↗</button>`:''}
@@ -1832,27 +1817,6 @@ document.getElementById('shSave').onclick=()=>{
   if(!shCur) return;
   saveBlob(shCur.blob,shCur.name); closeShareOpts();
   toast('Saved to your downloads.');
-};
-document.getElementById('shWa').onclick=()=>{
-  if(!shCur) return;
-  /* both of these have to happen inside the click, or the browser
-     treats the new tab as a popup and blocks it */
-  saveBlob(shCur.blob,shCur.name);
-  window.open('https://wa.me/?text='+encodeURIComponent(shCur.text),'_blank','noopener');
-  closeShareOpts();
-  toast('Video saved. Attach it in WhatsApp — the message is already written.');
-};
-document.getElementById('shIg').onclick=()=>{
-  if(!shCur) return;
-  /* neither instagram nor tiktok have a web link that opens with a file
-     already attached — saving it and saying so plainly is the honest move */
-  saveBlob(shCur.blob,shCur.name); closeShareOpts();
-  toast('Video saved. Open Instagram and attach it from your camera roll.');
-};
-document.getElementById('shTt').onclick=()=>{
-  if(!shCur) return;
-  saveBlob(shCur.blob,shCur.name); closeShareOpts();
-  toast('Video saved. Open TikTok and attach it from your camera roll.');
 };
 
 /* one clip, exactly as filmed. nothing rendered, nothing to wait for */
